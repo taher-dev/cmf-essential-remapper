@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">CMF Essential Remapper</string>
+    <string name="mode_silent">Silent</string>
+    <string name="mode_vibrate">Vibrate</string>
+    <string name="mode_ring">Ring</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_dialog_message">Hardware key interception and button mapping configuration.</string>
+    <string name="error_mode_change_failed">Unable to change system ringer mode.</string>
+    <string name="accessibility_service_description">CMF Essential Remapper uses Android Accessibility Services exclusively to detect physical Essential Key presses on the CMF Phone 2 Pro. It processes hardware key events locally and does not read screen content, passwords, text fields, or personal information.</string>
+</resources>
