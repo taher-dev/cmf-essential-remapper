@@ -54,8 +54,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToDiagnostics = { currentScreen = AppScreen.DIAGNOSTICS },
                             onErrorMessageDismissed = homeViewModel::onErrorMessageDismissed,
                             onSettingsClick = homeViewModel::onSettingsClicked,
-                            onDismissSettingsDialog = homeViewModel::onDismissSettingsDialog,
-                            onAppResumed = homeViewModel::onAppResumed
+                            onDismissSettingsDialog = homeViewModel::onDismissSettingsDialog
                         )
                     }
 
