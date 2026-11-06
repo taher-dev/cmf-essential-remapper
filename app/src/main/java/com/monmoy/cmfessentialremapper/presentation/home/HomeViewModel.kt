@@ -113,7 +113,14 @@ class HomeViewModel(
     fun onAppResumed() {
         viewModelScope.launch {
             val current = repository.getCurrentRingerMode()
-            _uiState.update { it.copy(currentRingerMode = current) }
+            val hasPolicy = repository.hasNotificationPolicyAccess()
+            val isSetupComplete = _uiState.value.keyStatus is EssentialKeyStatus.Ready && hasPolicy
+            _uiState.update {
+                it.copy(
+                    currentRingerMode = current,
+                    isSetupComplete = isSetupComplete
+                )
+            }
         }
     }
 
