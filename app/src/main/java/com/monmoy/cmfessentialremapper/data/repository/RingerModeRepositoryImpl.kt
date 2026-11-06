@@ -90,30 +90,26 @@ class RingerModeRepositoryImpl(
                     savedRingVolume = currentVol
                 }
 
-                // Directly apply SILENT mode
+                // Directly mute ring & notification streams with ringer mode transition permission
+                try {
+                    am.adjustStreamVolume(
+                        AudioManager.STREAM_RING,
+                        AudioManager.ADJUST_MUTE,
+                        AudioManager.FLAG_ALLOW_RINGER_MODES
+                    )
+                    am.adjustStreamVolume(
+                        AudioManager.STREAM_NOTIFICATION,
+                        AudioManager.ADJUST_MUTE,
+                        AudioManager.FLAG_ALLOW_RINGER_MODES
+                    )
+                } catch (_: Throwable) {}
+
+                // Directly apply SILENT mode (do NOT turn off DND here, as turning off DND in Android cancels Silent mode)
                 am.ringerMode = AudioManager.RINGER_MODE_SILENT
-                delay(120)
+                delay(80)
 
-                // If device didn't switch from VIBRATE to SILENT (Nothing OS quirk),
-                // explicitly mute ring/notification streams and retry
-                if (am.ringerMode != AudioManager.RINGER_MODE_SILENT) {
-                    try {
-                        am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
-                        am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0)
-                    } catch (_: Throwable) {}
-                    am.ringerMode = AudioManager.RINGER_MODE_SILENT
-                    delay(100)
-                }
-
-                // Workaround: Turn off DND immediately after Silent mode is activated
-                turnOffDnd()
-                delay(100)
-
-                // If turning off DND reverted the ringer mode on some ROMs, re-apply silent and re-clear DND
                 if (am.ringerMode != AudioManager.RINGER_MODE_SILENT) {
                     am.ringerMode = AudioManager.RINGER_MODE_SILENT
-                    delay(80)
-                    turnOffDnd()
                 }
             }
 
@@ -122,17 +118,19 @@ class RingerModeRepositoryImpl(
                 if (currentVol > 0) {
                     savedRingVolume = currentVol
                 }
-                am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
-                delay(100)
+
                 // Ensure DND is turned off when leaving Silent
-                turnOffDnd()
+                ensureDndOff()
+
+                am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
             }
 
             RingerMode.RING -> {
-                am.ringerMode = AudioManager.RINGER_MODE_NORMAL
-                delay(100)
                 // Ensure DND is turned off when leaving Silent
-                turnOffDnd()
+                ensureDndOff()
+
+                am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                delay(80)
 
                 // Restore audible ring volume if it was muted
                 try {
@@ -149,7 +147,7 @@ class RingerModeRepositoryImpl(
         }
     }
 
-    private suspend fun turnOffDnd() {
+    private suspend fun ensureDndOff() {
         // Method 1: Official Android NotificationManager API
         try {
             if (hasNotificationPolicyAccess()) {
