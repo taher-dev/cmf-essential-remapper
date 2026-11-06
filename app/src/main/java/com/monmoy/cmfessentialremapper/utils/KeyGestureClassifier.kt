@@ -44,18 +44,25 @@ class KeyGestureClassifier(
      * Returns true if the event was processed/consumed.
      */
     fun processKeyEvent(event: KeyEvent): Boolean {
+        return processKeyEvent(event.action, event.repeatCount, event.eventTime)
+    }
+
+    /**
+     * Overload accepting primitive values for unit testing independent of Android KeyEvent mock.
+     */
+    fun processKeyEvent(action: Int, repeatCount: Int = 0, eventTime: Long = 0L): Boolean {
         // Ignore hardware auto-repeat events when user holds the key down
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount > 0) {
+        if (action == KeyEvent.ACTION_DOWN && repeatCount > 0) {
             return true
         }
 
-        val eventTime = if (event.eventTime > 0) event.eventTime else SystemClock.uptimeMillis()
+        val now = if (eventTime > 0) eventTime else System.currentTimeMillis()
 
-        when (event.action) {
+        when (action) {
             KeyEvent.ACTION_DOWN -> {
                 if (isKeyDown) return true
                 isKeyDown = true
-                keyDownTime = eventTime
+                keyDownTime = now
                 isLongPressTriggered = false
 
                 // Stop pending multi-press evaluation while holding
@@ -81,7 +88,7 @@ class KeyGestureClassifier(
                 isKeyDown = false
                 longPressJob?.cancel()
 
-                val pressDuration = eventTime - keyDownTime
+                val pressDuration = now - keyDownTime
 
                 // Discard UP event if long press already fired
                 if (isLongPressTriggered || pressDuration >= longPressThresholdMs) {

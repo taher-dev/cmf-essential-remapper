@@ -120,10 +120,40 @@ class EssentialSpaceManager(private val context: Context) {
         }
     }
 
+    fun createInstallShizukuIntent(): Intent {
+        return try {
+            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$PKG_SHIZUKU")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        } catch (_: Exception) {
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$PKG_SHIZUKU")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        }
+    }
+
+    fun createOpenShizukuIntent(): Intent? {
+        return context.packageManager.getLaunchIntentForPackage(PKG_SHIZUKU)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+    }
+
+    fun createOpenDeveloperOptionsIntent(): Intent {
+        return try {
+            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        } catch (_: Exception) {
+            Intent(Settings.ACTION_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        }
+    }
+
     suspend fun setPackageEnabledShizuku(packageName: String, enable: Boolean): Result<Boolean> =
         withContext(Dispatchers.IO) {
             if (!isShizukuRunning()) {
-                return@withContext Result.failure(IllegalStateException("Shizuku service is not running."))
+                return@withContext Result.failure(IllegalStateException("Shizuku service is not running. Please start Shizuku first."))
             }
             if (!isShizukuPermissionGranted()) {
                 return@withContext Result.failure(SecurityException("Shizuku permission not granted."))
@@ -136,7 +166,14 @@ class EssentialSpaceManager(private val context: Context) {
                     arrayOf("pm", "disable-user", "--user", "0", packageName)
                 }
 
-                val process = Shizuku.newProcess(command, null, null)
+                val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                    "newProcess",
+                    Array<String>::class.java,
+                    Array<String>::class.java,
+                    String::class.java
+                ).apply { isAccessible = true }
+
+                val process = newProcessMethod.invoke(null, command, null, null) as Process
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
                 val output = reader.readText()
                 val exitCode = process.waitFor()

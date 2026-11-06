@@ -11,14 +11,15 @@ data class SetupUiState(
     val learnedKeyCode: Int = 0,
     val learnedScanCode: Int = 250,
     val essentialSpaceStatus: EssentialSpaceStatus = EssentialSpaceStatus(
-        spacePackageStatus = PackageInstallStatus.NOT_INSTALLED,
-        recorderPackageStatus = PackageInstallStatus.NOT_INSTALLED,
+        spacePackageStatus = PackageInstallStatus.ENABLED,
+        recorderPackageStatus = PackageInstallStatus.ENABLED,
         isShizukuInstalled = false,
         isShizukuRunning = false,
         isShizukuPermissionGranted = false
     ),
     val isPerformingAction: Boolean = false,
     val showAccessibilityDisclosure: Boolean = false,
+    val showShizukuSetupDialog: Boolean = false,
     val packageToDisableConfirm: String? = null,
     val showRestoreConfirmation: Boolean = false,
     val infoMessage: String? = null,

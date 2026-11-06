@@ -46,6 +46,7 @@ fun EssentialSpaceCard(
     onOpenAppInfo: (String) -> Unit,
     onRestoreAll: () -> Unit,
     onRequestShizukuPermission: () -> Unit,
+    onOpenShizukuSetup: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -184,23 +185,56 @@ fun EssentialSpaceCard(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = if (status.isShizukuRunning) {
-                            "Shizuku service detected. Can disable and restore packages automatically without root."
+                        text = if (status.isShizukuPermissionGranted) {
+                            "Shizuku service active & authorized. Essential Space packages can be disabled and restored automatically."
+                        } else if (status.isShizukuRunning) {
+                            "Shizuku service detected but needs authorization to manage packages."
                         } else {
-                            "Shizuku optional bridge is inactive. Use manual App Info buttons to disable packages in system settings."
+                            "Shizuku bridge is not running. Setup Shizuku via Wireless Debugging to disable Essential Space without root."
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = NothingGrayLight
                     )
 
-                    if (status.isShizukuRunning && !status.isShizukuPermissionGranted) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(
-                            onClick = onRequestShizukuPermission,
-                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
-                            shape = RoundedCornerShape(10.dp)
+                            onClick = onOpenShizukuSetup,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (!status.isShizukuRunning || !status.isShizukuPermissionGranted) CmfRedAccent else NothingBlack
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            border = if (status.isShizukuRunning && status.isShizukuPermissionGranted) {
+                                androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder)
+                            } else null
                         ) {
-                            Text(text = "AUTHORIZE SHIZUKU", style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                text = if (!status.isShizukuInstalled || !status.isShizukuRunning) {
+                                    "SETUP SHIZUKU"
+                                } else {
+                                    "SHIZUKU GUIDE"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NothingWhite
+                            )
+                        }
+
+                        if (status.isShizukuRunning && !status.isShizukuPermissionGranted) {
+                            OutlinedButton(
+                                onClick = onRequestShizukuPermission,
+                                shape = RoundedCornerShape(10.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder)
+                            ) {
+                                Text(
+                                    text = "AUTHORIZE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = NothingWhite
+                                )
+                            }
                         }
                     }
                 }

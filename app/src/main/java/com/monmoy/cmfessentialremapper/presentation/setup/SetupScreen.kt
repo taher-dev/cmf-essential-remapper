@@ -45,6 +45,7 @@ import com.monmoy.cmfessentialremapper.presentation.setup.components.Accessibili
 import com.monmoy.cmfessentialremapper.presentation.setup.components.EssentialSpaceCard
 import com.monmoy.cmfessentialremapper.presentation.setup.components.PermissionCard
 import com.monmoy.cmfessentialremapper.presentation.setup.components.SetupProgressIndicator
+import com.monmoy.cmfessentialremapper.presentation.setup.components.ShizukuSetupDialog
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBackground
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBlack
@@ -75,6 +76,12 @@ fun SetupScreen(
     onOpenAppInfo: (String) -> Unit,
     onRestoreAllPackages: () -> Unit,
     onRequestShizukuPermission: () -> Unit,
+    onOpenShizukuSetup: () -> Unit,
+    onDismissShizukuSetup: () -> Unit,
+    onLaunchShizukuApp: () -> Unit,
+    onInstallShizuku: () -> Unit,
+    onOpenDeveloperOptions: () -> Unit,
+    onCopyAdbCommand: (String) -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -303,10 +310,24 @@ fun SetupScreen(
                 onRestorePackage = onRestorePackage,
                 onOpenAppInfo = onOpenAppInfo,
                 onRestoreAll = onRestoreAllPackages,
-                onRequestShizukuPermission = onRequestShizukuPermission
+                onRequestShizukuPermission = onRequestShizukuPermission,
+                onOpenShizukuSetup = onOpenShizukuSetup
             )
 
             Spacer(modifier = Modifier.height(30.dp))
+        }
+
+        // Shizuku Setup Guide Dialog
+        if (uiState.showShizukuSetupDialog) {
+            ShizukuSetupDialog(
+                status = uiState.essentialSpaceStatus,
+                onDismissRequest = onDismissShizukuSetup,
+                onLaunchShizuku = onLaunchShizukuApp,
+                onInstallShizuku = onInstallShizuku,
+                onOpenDeveloperOptions = onOpenDeveloperOptions,
+                onRequestShizukuPermission = onRequestShizukuPermission,
+                onCopyAdbCommand = onCopyAdbCommand
+            )
         }
 
         // Accessibility Disclosure Dialog

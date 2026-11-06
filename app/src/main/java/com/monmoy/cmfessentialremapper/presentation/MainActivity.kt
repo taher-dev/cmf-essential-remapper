@@ -81,6 +81,12 @@ class MainActivity : ComponentActivity() {
                             onOpenAppInfo = setupViewModel::onOpenPackageAppInfo,
                             onRestoreAllPackages = setupViewModel::onRestoreAllPackages,
                             onRequestShizukuPermission = setupViewModel::onRequestShizukuPermission,
+                            onOpenShizukuSetup = setupViewModel::onOpenShizukuSetup,
+                            onDismissShizukuSetup = setupViewModel::onDismissShizukuSetup,
+                            onLaunchShizukuApp = setupViewModel::onLaunchShizukuApp,
+                            onInstallShizuku = setupViewModel::onInstallShizuku,
+                            onOpenDeveloperOptions = setupViewModel::onOpenDeveloperOptions,
+                            onCopyAdbCommand = setupViewModel::onCopyAdbCommand,
                             onClearMessages = setupViewModel::clearMessages
                         )
                     }

@@ -2,6 +2,8 @@ package com.monmoy.cmfessentialremapper.presentation.setup
 
 import android.app.Application
 import android.app.NotificationManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -191,15 +193,28 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.update {
                             it.copy(
                                 isPerformingAction = false,
-                                errorMessage = "Shizuku operation failed: ${err.localizedMessage}. Use manual disable via App Info."
+                                errorMessage = "Shizuku operation failed: ${err.localizedMessage}."
                             )
                         }
                     }
                 )
+            } else if (spaceManager.isShizukuRunning() && !spaceManager.isShizukuPermissionGranted()) {
+                _uiState.update {
+                    it.copy(
+                        isPerformingAction = false,
+                        infoMessage = "Shizuku permission required. Requesting permission..."
+                    )
+                }
+                spaceManager.requestShizukuPermission(1001)
             } else {
-                // Route user to system App Info to disable manually
-                _uiState.update { it.copy(isPerformingAction = false) }
-                onOpenPackageAppInfo(packageName)
+                // Route user to setup Shizuku since Nothing OS protects system apps in Settings
+                _uiState.update {
+                    it.copy(
+                        isPerformingAction = false,
+                        showShizukuSetupDialog = true,
+                        infoMessage = "Nothing OS prevents disabling system apps via App Info. Please set up Shizuku."
+                    )
+                }
             }
             refreshStatus()
         }
@@ -223,14 +238,26 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.update {
                             it.copy(
                                 isPerformingAction = false,
-                                errorMessage = "Shizuku restore failed: ${err.localizedMessage}. Open App Info to enable manually."
+                                errorMessage = "Shizuku restore failed: ${err.localizedMessage}."
                             )
                         }
                     }
                 )
+            } else if (spaceManager.isShizukuRunning() && !spaceManager.isShizukuPermissionGranted()) {
+                _uiState.update {
+                    it.copy(
+                        isPerformingAction = false,
+                        infoMessage = "Shizuku permission required. Requesting permission..."
+                    )
+                }
+                spaceManager.requestShizukuPermission(1001)
             } else {
-                _uiState.update { it.copy(isPerformingAction = false) }
-                onOpenPackageAppInfo(packageName)
+                _uiState.update {
+                    it.copy(
+                        isPerformingAction = false,
+                        showShizukuSetupDialog = true
+                    )
+                }
             }
             refreshStatus()
         }
@@ -252,12 +279,62 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update {
                     it.copy(
                         isPerformingAction = false,
-                        infoMessage = "Please enable each package manually in App Info."
+                        showShizukuSetupDialog = true,
+                        infoMessage = "Please set up Shizuku to restore packages."
                     )
                 }
-                onOpenPackageAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE)
             }
             refreshStatus()
+        }
+    }
+
+    fun onOpenShizukuSetup() {
+        _uiState.update { it.copy(showShizukuSetupDialog = true) }
+    }
+
+    fun onDismissShizukuSetup() {
+        _uiState.update { it.copy(showShizukuSetupDialog = false) }
+    }
+
+    fun onLaunchShizukuApp() {
+        try {
+            val intent = spaceManager.createOpenShizukuIntent()
+            if (intent != null) {
+                context.startActivity(intent)
+            } else {
+                onInstallShizuku()
+            }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Could not open Shizuku app.") }
+        }
+    }
+
+    fun onInstallShizuku() {
+        try {
+            val intent = spaceManager.createInstallShizukuIntent()
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Could not open Google Play Store.") }
+        }
+    }
+
+    fun onOpenDeveloperOptions() {
+        try {
+            val intent = spaceManager.createOpenDeveloperOptionsIntent()
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Could not open Developer Options.") }
+        }
+    }
+
+    fun onCopyAdbCommand(command: String) {
+        try {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("ADB Command", command)
+            clipboard.setPrimaryClip(clip)
+            _uiState.update { it.copy(infoMessage = "ADB command copied to clipboard!") }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Could not copy to clipboard.") }
         }
     }
 
