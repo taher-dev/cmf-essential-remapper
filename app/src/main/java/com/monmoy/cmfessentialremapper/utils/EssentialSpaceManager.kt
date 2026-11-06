@@ -101,9 +101,6 @@ class EssentialSpaceManager(private val context: Context) {
         }
     }
 
-    val isShizukuReady: Boolean
-        get() = isShizukuRunning() && isShizukuPermissionGranted()
-
     fun requestShizukuPermission(requestCode: Int) {
         try {
             if (isShizukuRunning() && !isShizukuPermissionGranted()) {
@@ -221,28 +218,6 @@ class EssentialSpaceManager(private val context: Context) {
             Result.success(true)
         } else {
             r1
-        }
-    }
-
-    suspend fun runShizukuCommand(command: Array<String>): Result<String> = withContext(Dispatchers.IO) {
-        if (!isShizukuRunning() || !isShizukuPermissionGranted()) {
-            return@withContext Result.failure(IllegalStateException("Shizuku is not available."))
-        }
-        try {
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-
-            val process = newProcessMethod.invoke(null, command, null, null) as Process
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val output = reader.readText()
-            process.waitFor()
-            Result.success(output.trim())
-        } catch (e: Throwable) {
-            Result.failure(e)
         }
     }
 }
