@@ -147,13 +147,11 @@ class EssentialSpaceManager(private val context: Context) {
                 return@withContext Result.failure(SecurityException("Shizuku permission not granted."))
             }
 
-            try {
-                val command = if (enable) {
-                    arrayOf("pm", "enable", packageName)
-                } else {
-                    arrayOf("pm", "disable-user", "--user", "0", packageName)
-                }
+            if (!isPackageInstalled(packageName)) {
+                return@withContext Result.success(true)
+            }
 
+            try {
                 val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
                     "newProcess",
                     Array<String>::class.java,
@@ -161,17 +159,42 @@ class EssentialSpaceManager(private val context: Context) {
                     String::class.java
                 ).apply { isAccessible = true }
 
-                val process = newProcessMethod.invoke(null, command, null, null) as Process
-                val reader = BufferedReader(InputStreamReader(process.inputStream))
-                val output = reader.readText()
-                val exitCode = process.waitFor()
-
-                if (exitCode == 0) {
-                    Result.success(true)
-                } else {
+                fun executeCommand(cmd: Array<String>): Pair<Int, String> {
+                    val process = newProcessMethod.invoke(null, cmd, null, null) as Process
+                    val reader = BufferedReader(InputStreamReader(process.inputStream))
+                    val output = reader.readText()
+                    val exitCode = process.waitFor()
                     val errorReader = BufferedReader(InputStreamReader(process.errorStream))
                     val err = errorReader.readText()
-                    Result.failure(RuntimeException("Command failed ($exitCode): $err $output"))
+                    return Pair(exitCode, "$output $err".trim())
+                }
+
+                val primaryCommand = if (enable) {
+                    arrayOf("pm", "enable", packageName)
+                } else {
+                    arrayOf("pm", "disable-user", "--user", "0", packageName)
+                }
+
+                var (exitCode, output) = executeCommand(primaryCommand)
+
+                var isTargetState = if (enable) {
+                    getPackageStatus(packageName) == PackageInstallStatus.ENABLED
+                } else {
+                    getPackageStatus(packageName) != PackageInstallStatus.ENABLED
+                }
+
+                // If primary disable command did not work, try fallback command: pm disable
+                if (!enable && !isTargetState && exitCode != 0) {
+                    val fallback = executeCommand(arrayOf("pm", "disable", packageName))
+                    exitCode = fallback.first
+                    output = fallback.second
+                    isTargetState = getPackageStatus(packageName) != PackageInstallStatus.ENABLED
+                }
+
+                if (exitCode == 0 || isTargetState) {
+                    Result.success(true)
+                } else {
+                    Result.failure(RuntimeException("Command failed ($exitCode): $output"))
                 }
             } catch (e: Throwable) {
                 Result.failure(e)

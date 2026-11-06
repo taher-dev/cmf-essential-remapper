@@ -11,10 +11,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.monmoy.cmfessentialremapper.service.EssentialKeyAccessibilityService
 import com.monmoy.cmfessentialremapper.utils.EssentialSpaceManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
@@ -42,6 +44,16 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
         observeAccessibilityService()
         registerShizukuListeners()
         refreshStatus()
+        startPeriodicStatusCheck()
+    }
+
+    private fun startPeriodicStatusCheck() {
+        viewModelScope.launch {
+            while (isActive) {
+                delay(2000)
+                refreshStatus()
+            }
+        }
     }
 
     private fun registerShizukuListeners() {
@@ -203,71 +215,97 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
         spaceManager.requestShizukuPermission(1001)
     }
 
-    // Step 5: Disable Essential Space & Recorder with One Button Tap
+    // Step 5: Disable Essential Space & Recorder with One Button Tap (No Redirect)
     fun onDisableBothEssentialApps() {
+        if (!spaceManager.isShizukuRunning()) {
+            _uiState.update {
+                it.copy(
+                    isPerformingAction = false,
+                    errorMessage = "Shizuku is not running. Please start Shizuku in Step 4."
+                )
+            }
+            return
+        }
+
+        if (!spaceManager.isShizukuPermissionGranted()) {
+            spaceManager.requestShizukuPermission(1001)
+            _uiState.update {
+                it.copy(
+                    isPerformingAction = false,
+                    errorMessage = "Please authorize Shizuku permission when prompted."
+                )
+            }
+            return
+        }
+
         _uiState.update { it.copy(isPerformingAction = true) }
         viewModelScope.launch {
-            if (spaceManager.isShizukuRunning() && spaceManager.isShizukuPermissionGranted()) {
-                val result = spaceManager.disableBothEssentialPackages()
-                result.fold(
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(
-                                isPerformingAction = false,
-                                infoMessage = "Essential Space and Recorder successfully disabled."
-                            )
-                        }
-                    },
-                    onFailure = { err ->
-                        _uiState.update {
-                            it.copy(
-                                isPerformingAction = false,
-                                errorMessage = "Shizuku operation failed: ${err.localizedMessage}."
-                            )
-                        }
+            val result = spaceManager.disableBothEssentialPackages()
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            infoMessage = "Essential Space and Recorder successfully disabled."
+                        )
                     }
-                )
-            } else {
-                // If Shizuku not ready, guide user to manual App Info
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        errorMessage = "Please authorize Shizuku in Step 4, or disable in App Info."
-                    )
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            errorMessage = "Disable failed: ${err.localizedMessage}."
+                        )
+                    }
                 }
-                onOpenPackageAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE)
-            }
+            )
             refreshStatus()
         }
     }
 
     fun onRestoreBothEssentialApps() {
+        if (!spaceManager.isShizukuRunning()) {
+            _uiState.update {
+                it.copy(
+                    isPerformingAction = false,
+                    errorMessage = "Shizuku is not running. Please start Shizuku in Step 4."
+                )
+            }
+            return
+        }
+
+        if (!spaceManager.isShizukuPermissionGranted()) {
+            spaceManager.requestShizukuPermission(1001)
+            _uiState.update {
+                it.copy(
+                    isPerformingAction = false,
+                    errorMessage = "Please authorize Shizuku permission when prompted."
+                )
+            }
+            return
+        }
+
         _uiState.update { it.copy(isPerformingAction = true) }
         viewModelScope.launch {
-            if (spaceManager.isShizukuRunning() && spaceManager.isShizukuPermissionGranted()) {
-                val result = spaceManager.enableBothEssentialPackages()
-                result.fold(
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(
-                                isPerformingAction = false,
-                                infoMessage = "Essential Space and Recorder restored."
-                            )
-                        }
-                    },
-                    onFailure = { err ->
-                        _uiState.update {
-                            it.copy(
-                                isPerformingAction = false,
-                                errorMessage = "Restore failed: ${err.localizedMessage}."
-                            )
-                        }
+            val result = spaceManager.enableBothEssentialPackages()
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            infoMessage = "Essential Space and Recorder restored."
+                        )
                     }
-                )
-            } else {
-                _uiState.update { it.copy(isPerformingAction = false) }
-                onOpenPackageAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE)
-            }
+                },
+                onFailure = { err ->
+                    _uiState.update {
+                        it.copy(
+                            isPerformingAction = false,
+                            errorMessage = "Restore failed: ${err.localizedMessage}."
+                        )
+                    }
+                }
+            )
             refreshStatus()
         }
     }

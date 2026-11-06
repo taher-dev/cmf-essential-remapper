@@ -468,37 +468,18 @@ fun SetupScreen(
                 isCompleted = areBothDisabled
             ) {
                 if (!areBothDisabled) {
-                    Column {
-                        Button(
-                            onClick = onDisableBothEssentialApps,
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !uiState.isPerformingAction,
-                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = if (uiState.isPerformingAction) "DISABLING..." else "DISABLE BOTH APPS (1-TAP)",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = NothingWhite
-                            )
-                        }
-
-                        if (!shizukuReady) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = { onOpenManualAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
-                            ) {
-                                Text(
-                                    text = "MANUAL DISABLE VIA APP INFO",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = NothingGrayLight
-                                )
-                            }
-                        }
+                    Button(
+                        onClick = onDisableBothEssentialApps,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isPerformingAction,
+                        colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = if (uiState.isPerformingAction) "DISABLING..." else "DISABLE BOTH APPS (1-TAP)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = NothingWhite
+                        )
                     }
                 } else {
                     Row(
