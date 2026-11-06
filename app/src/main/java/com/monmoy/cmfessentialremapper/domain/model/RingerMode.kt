@@ -10,13 +10,13 @@ enum class RingerMode(val displayName: String) {
     RING("Ring");
 
     /**
-     * Cycles to the next mode in sequence: SILENT -> VIBRATE -> RING -> SILENT.
+     * Cycles to the next mode in sequence: RING -> VIBRATE -> SILENT -> RING.
      */
     fun next(): RingerMode {
         return when (this) {
-            SILENT -> VIBRATE
-            VIBRATE -> RING
-            RING -> SILENT
+            RING -> VIBRATE
+            VIBRATE -> SILENT
+            SILENT -> RING
         }
     }
 

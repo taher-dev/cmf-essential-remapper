@@ -6,24 +6,24 @@ import org.junit.Test
 class RingerModeTest {
 
     @Test
-    fun testCyclingSilentToVibrate() {
-        val current = RingerMode.SILENT
+    fun testCyclingRingToVibrate() {
+        val current = RingerMode.RING
         val next = current.next()
         assertEquals(RingerMode.VIBRATE, next)
     }
 
     @Test
-    fun testCyclingVibrateToRing() {
+    fun testCyclingVibrateToSilent() {
         val current = RingerMode.VIBRATE
         val next = current.next()
-        assertEquals(RingerMode.RING, next)
+        assertEquals(RingerMode.SILENT, next)
     }
 
     @Test
-    fun testCyclingRingToSilent() {
-        val current = RingerMode.RING
+    fun testCyclingSilentToRing() {
+        val current = RingerMode.SILENT
         val next = current.next()
-        assertEquals(RingerMode.SILENT, next)
+        assertEquals(RingerMode.RING, next)
     }
 
     @Test

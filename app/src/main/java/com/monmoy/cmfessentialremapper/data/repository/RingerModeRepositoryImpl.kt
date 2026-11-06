@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
@@ -36,6 +37,8 @@ class RingerModeRepositoryImpl(
 
     private val notificationManager: NotificationManager? =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+
+    private var savedRingVolume: Int = 0
 
     override fun observeRingerMode(): Flow<RingerMode> = callbackFlow {
         trySend(getCurrentRingerMode())
@@ -66,7 +69,7 @@ class RingerModeRepositoryImpl(
                 // Ignore if already unregistered
             }
         }
-    }
+    }.distinctUntilChanged()
 
     override fun getCurrentRingerMode(): RingerMode {
         val am = audioManager ?: return RingerMode.RING
@@ -87,8 +90,7 @@ class RingerModeRepositoryImpl(
             RingerMode.RING -> AudioManager.RINGER_MODE_NORMAL
         }
 
-        // 1. First attempt: Privileged setRingerModeInternal via Shizuku (if running & authorized)
-        // This acts directly as SystemUI, switching ringer mode without activating Do Not Disturb (DND).
+        // 1. Privileged setRingerModeInternal via Shizuku (if running & authorized)
         val shizukuSuccess = setRingerModeViaShizuku(targetSystemMode)
 
         if (!shizukuSuccess) {
@@ -99,34 +101,44 @@ class RingerModeRepositoryImpl(
                         throw SecurityException("Notification Policy Access is required to switch to Silent mode.")
                     }
 
-                    // Mute stream volumes directly first so system allows entering SILENT cleanly from VIBRATE
+                    val currentVol = am.getStreamVolume(AudioManager.STREAM_RING)
+                    if (currentVol > 0) {
+                        savedRingVolume = currentVol
+                    }
+
+                    // Directly mute ring stream with FLAG_ALLOW_RINGER_MODES so transition to silent is accepted
                     try {
-                        am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
-                        am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0)
+                        am.adjustStreamVolume(
+                            AudioManager.STREAM_RING,
+                            AudioManager.ADJUST_MUTE,
+                            AudioManager.FLAG_ALLOW_RINGER_MODES
+                        )
                     } catch (_: Throwable) {}
 
                     am.ringerMode = AudioManager.RINGER_MODE_SILENT
-
-                    // Wait 60ms for AudioService to process, then immediately disable DND
-                    delay(60)
-                    turnOffDndIfActive()
                 }
 
                 RingerMode.VIBRATE -> {
-                    turnOffDndIfActive()
+                    val currentVol = am.getStreamVolume(AudioManager.STREAM_RING)
+                    if (currentVol > 0) {
+                        savedRingVolume = currentVol
+                    }
+
                     am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
                 }
 
                 RingerMode.RING -> {
-                    turnOffDndIfActive()
                     am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+
                     // Unmute streams and restore ring volume
                     try {
                         am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
                         am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
-                        if (am.getStreamVolume(AudioManager.STREAM_RING) == 0) {
+                        val currentVol = am.getStreamVolume(AudioManager.STREAM_RING)
+                        if (currentVol == 0) {
                             val max = am.getStreamMaxVolume(AudioManager.STREAM_RING)
-                            am.setStreamVolume(AudioManager.STREAM_RING, (max * 0.7).toInt().coerceAtLeast(1), 0)
+                            val target = if (savedRingVolume > 0) savedRingVolume else (max * 0.7).toInt().coerceAtLeast(1)
+                            am.setStreamVolume(AudioManager.STREAM_RING, target, 0)
                         }
                     } catch (_: Throwable) {}
                 }
@@ -136,7 +148,7 @@ class RingerModeRepositoryImpl(
 
     /**
      * Invokes internal system AudioService.setRingerModeInternal via Shizuku.
-     * This bypasses ZenModeHelper's automatic DND activation when entering SILENT mode.
+     * Uses caller "com.android.shell" since Shizuku runs with Shell UID 2000.
      */
     private fun setRingerModeViaShizuku(targetMode: Int): Boolean {
         return try {
@@ -158,7 +170,7 @@ class RingerModeRepositoryImpl(
                     Int::class.javaPrimitiveType,
                     String::class.java
                 )
-                setRingerModeInternal.invoke(audioService, targetMode, "com.android.systemui")
+                setRingerModeInternal.invoke(audioService, targetMode, "com.android.shell")
                 invoked = true
             } catch (_: Throwable) {
                 // Method 2: Direct binder transaction using transaction code
@@ -170,7 +182,7 @@ class RingerModeRepositoryImpl(
                     try {
                         data.writeInterfaceToken("android.media.IAudioService")
                         data.writeInt(targetMode)
-                        data.writeString("com.android.systemui")
+                        data.writeString("com.android.shell")
                         shizukuBinder.transact(code, data, reply, 0)
                         reply.readException()
                         invoked = true
@@ -181,55 +193,16 @@ class RingerModeRepositoryImpl(
                 }
             }
 
-            if (invoked) {
-                turnOffDndIfActive()
-                if (targetMode == AudioManager.RINGER_MODE_NORMAL) {
-                    try {
-                        audioManager?.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
-                        audioManager?.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
-                    } catch (_: Throwable) {}
-                }
+            if (invoked && targetMode == AudioManager.RINGER_MODE_NORMAL) {
+                try {
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
+                } catch (_: Throwable) {}
             }
             invoked
         } catch (_: Throwable) {
             false
         }
-    }
-
-    /**
-     * Ensures Do Not Disturb (ZenMode) is turned off.
-     */
-    private fun turnOffDndIfActive() {
-        // Method 1: NotificationManager official API
-        try {
-            if (hasNotificationPolicyAccess()) {
-                val filter = notificationManager?.currentInterruptionFilter
-                if (filter != null && filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
-                    filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
-                ) {
-                    notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-                }
-            }
-        } catch (_: Throwable) {}
-
-        // Method 2: Shizuku privileged shell command (if available)
-        try {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                    "newProcess",
-                    Array<String>::class.java,
-                    Array<String>::class.java,
-                    String::class.java
-                ).apply { isAccessible = true }
-                val process = newProcessMethod.invoke(
-                    null,
-                    arrayOf("cmd", "notification", "set_dnd", "off"),
-                    null,
-                    null
-                ) as Process
-                process.waitFor()
-            }
-        } catch (_: Throwable) {}
     }
 
     override fun observeEssentialKeyStatus(): Flow<EssentialKeyStatus> {

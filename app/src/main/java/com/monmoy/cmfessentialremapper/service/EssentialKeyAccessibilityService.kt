@@ -3,6 +3,7 @@ package com.monmoy.cmfessentialremapper.service
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -46,6 +47,8 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
     private var targetKeyCode: Int = 0
     private var targetScanCode: Int = 250
     private var isHapticFeedbackEnabled: Boolean = true
+    private var lastKeyActionTime: Long = 0L
+    private val debounceThresholdMs: Long = 350L
 
     override fun onCreate() {
         super.onCreate()
@@ -128,15 +131,36 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
             return true
         }
 
-        // Match against learned key identifier or default CMF Phone 2 Pro Essential Key
+        // Match against learned key identifier or default CMF Essential Key
         val matchesKey = isTargetKey(event.keyCode, event.scanCode)
         if (!matchesKey) {
             // Do not intercept volume, power, back, or unrelated hardware buttons
             return false
         }
 
-        // Feed matching key event into gesture state machine
-        return gestureClassifier?.processKeyEvent(event) ?: false
+        // Essential Key matched: ALWAYS consume both DOWN and UP so it never leaks to the system or window!
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            if (event.repeatCount > 0) return true
+
+            val now = SystemClock.uptimeMillis()
+            if (now - lastKeyActionTime >= debounceThresholdMs) {
+                lastKeyActionTime = now
+                _lastRecognizedGesture.value = KeyGesture.SINGLE_PRESS
+                performHapticFeedback()
+                serviceScope.launch {
+                    val result = cycleRingerModeUseCase()
+                    result.fold(
+                        onSuccess = { newMode ->
+                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                        },
+                        onFailure = { error ->
+                            _lastActionResult.value = "Error: ${error.localizedMessage}"
+                        }
+                    )
+                }
+            }
+        }
+        return true
     }
 
     private fun isTargetKey(keyCode: Int, scanCode: Int): Boolean {
@@ -148,7 +172,7 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
             return true
         }
         // Default CMF Essential Key reference identifier fallback
-        return (keyCode == 0 && scanCode == 250) || (keyCode == 0 && scanCode != 0)
+        return scanCode == 250 || (keyCode == 0 && scanCode != 0)
     }
 
     private fun handleGestureRecognized(gesture: KeyGesture) {
@@ -170,13 +194,49 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                 }
             }
             KeyGesture.DOUBLE_PRESS -> {
-                _lastActionResult.value = "Double Press (Unassigned)"
+                performHapticFeedback()
+                serviceScope.launch {
+                    cycleRingerModeUseCase()
+                    val result = cycleRingerModeUseCase()
+                    result.fold(
+                        onSuccess = { newMode ->
+                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                        },
+                        onFailure = { error ->
+                            _lastActionResult.value = "Error: ${error.localizedMessage}"
+                        }
+                    )
+                }
             }
             KeyGesture.TRIPLE_PRESS -> {
-                _lastActionResult.value = "Triple Press (Unassigned)"
+                performHapticFeedback()
+                serviceScope.launch {
+                    cycleRingerModeUseCase()
+                    cycleRingerModeUseCase()
+                    val result = cycleRingerModeUseCase()
+                    result.fold(
+                        onSuccess = { newMode ->
+                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                        },
+                        onFailure = { error ->
+                            _lastActionResult.value = "Error: ${error.localizedMessage}"
+                        }
+                    )
+                }
             }
             KeyGesture.LONG_PRESS -> {
-                _lastActionResult.value = "Long Press (Unassigned)"
+                performHapticFeedback()
+                serviceScope.launch {
+                    val result = cycleRingerModeUseCase()
+                    result.fold(
+                        onSuccess = { newMode ->
+                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                        },
+                        onFailure = { error ->
+                            _lastActionResult.value = "Error: ${error.localizedMessage}"
+                        }
+                    )
+                }
             }
         }
     }

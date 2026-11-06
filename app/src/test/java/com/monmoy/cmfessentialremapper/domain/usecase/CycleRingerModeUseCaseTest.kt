@@ -9,20 +9,8 @@ import org.junit.Test
 class CycleRingerModeUseCaseTest {
 
     @Test
-    fun testCycleFromRingToSilent() = runBlocking {
+    fun testCycleFromRingToVibrate() = runBlocking {
         val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.RING)
-        val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
-
-        val result = cycleUseCase()
-
-        assertTrue(result.isSuccess)
-        assertEquals(RingerMode.SILENT, result.getOrNull())
-        assertEquals(RingerMode.SILENT, fakeRepo.getCurrentRingerMode())
-    }
-
-    @Test
-    fun testCycleFromSilentToVibrate() = runBlocking {
-        val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.SILENT)
         val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
 
         val result = cycleUseCase()
@@ -33,8 +21,20 @@ class CycleRingerModeUseCaseTest {
     }
 
     @Test
-    fun testCycleFromVibrateToRing() = runBlocking {
+    fun testCycleFromVibrateToSilent() = runBlocking {
         val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.VIBRATE)
+        val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
+
+        val result = cycleUseCase()
+
+        assertTrue(result.isSuccess)
+        assertEquals(RingerMode.SILENT, result.getOrNull())
+        assertEquals(RingerMode.SILENT, fakeRepo.getCurrentRingerMode())
+    }
+
+    @Test
+    fun testCycleFromSilentToRing() = runBlocking {
+        val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.SILENT)
         val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
 
         val result = cycleUseCase()
@@ -49,12 +49,28 @@ class CycleRingerModeUseCaseTest {
         val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.RING)
         val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
 
-        // 1st cycle: RING -> SILENT
-        assertEquals(RingerMode.SILENT, cycleUseCase().getOrNull())
-        // 2nd cycle: SILENT -> VIBRATE
+        // 1st cycle: RING -> VIBRATE
         assertEquals(RingerMode.VIBRATE, cycleUseCase().getOrNull())
-        // 3rd cycle: VIBRATE -> RING
+        // 2nd cycle: VIBRATE -> SILENT
+        assertEquals(RingerMode.SILENT, cycleUseCase().getOrNull())
+        // 3rd cycle: SILENT -> RING
         assertEquals(RingerMode.RING, cycleUseCase().getOrNull())
+    }
+
+    @Test
+    fun testCycleSkipsSilentWhenNotificationPolicyMissing() = runBlocking {
+        val fakeRepo = FakeRingerModeRepository(
+            initialMode = RingerMode.VIBRATE,
+            hasNotificationPolicyAccessGranted = false
+        )
+        val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
+
+        val result = cycleUseCase()
+
+        assertTrue(result.isSuccess)
+        // When notification policy is missing, VIBRATE cycles back to RING without crashing
+        assertEquals(RingerMode.RING, result.getOrNull())
+        assertEquals(RingerMode.RING, fakeRepo.getCurrentRingerMode())
     }
 
     @Test
