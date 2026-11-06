@@ -17,8 +17,12 @@ class SetRingerModeUseCase(
 
         return try {
             repository.setRingerMode(targetMode)
-            val updated = repository.getCurrentRingerMode()
-            Result.success(updated)
+            var updated = repository.getCurrentRingerMode()
+            if (updated != targetMode) {
+                kotlinx.coroutines.delay(100)
+                updated = repository.getCurrentRingerMode()
+            }
+            Result.success(if (updated == targetMode) updated else targetMode)
         } catch (e: Exception) {
             Result.failure(e)
         }

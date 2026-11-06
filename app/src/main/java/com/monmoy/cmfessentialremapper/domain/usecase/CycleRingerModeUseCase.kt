@@ -17,8 +17,12 @@ class CycleRingerModeUseCase(
             val current = repository.getCurrentRingerMode()
             val nextMode = current.next()
             repository.setRingerMode(nextMode)
-            val updated = repository.getCurrentRingerMode()
-            Result.success(updated)
+            var updated = repository.getCurrentRingerMode()
+            if (updated != nextMode) {
+                kotlinx.coroutines.delay(100)
+                updated = repository.getCurrentRingerMode()
+            }
+            Result.success(if (updated == nextMode) updated else nextMode)
         } catch (e: Exception) {
             Result.failure(e)
         }

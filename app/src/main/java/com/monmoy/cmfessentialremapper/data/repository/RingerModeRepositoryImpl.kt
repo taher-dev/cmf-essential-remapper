@@ -3,6 +3,7 @@ package com.monmoy.cmfessentialremapper.data.repository
 import android.app.NotificationManager
 import android.content.Context
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
+import rikka.shizuku.Shizuku
 
 class RingerModeRepositoryImpl(
     private val context: Context,
@@ -71,29 +73,107 @@ class RingerModeRepositoryImpl(
         return notificationManager?.isNotificationPolicyAccessGranted == true
     }
 
+    private fun isShizukuReady(): Boolean {
+        return try {
+            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun executeShizukuCommands(vararg commands: String) {
+        try {
+            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            for (cmdStr in commands) {
+                try {
+                    val cmd = arrayOf("sh", "-c", cmdStr)
+                    val process = newProcessMethod.invoke(null, cmd, null, null) as Process
+                    process.waitFor()
+                } catch (_: Throwable) {}
+            }
+        } catch (_: Throwable) {}
+    }
+
     override suspend fun setRingerMode(mode: RingerMode) = withContext(Dispatchers.IO) {
         val am = audioManager
             ?: throw IllegalStateException("AudioManager service unavailable.")
 
         when (mode) {
             RingerMode.SILENT -> {
-                if (!hasNotificationPolicyAccess()) {
-                    throw SecurityException("Notification Policy Access is required to switch to Silent mode.")
-                }
-                // Transition through NORMAL if in VIBRATE to reset vibration state
-                if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
-                    am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                if (isShizukuReady()) {
+                    // 1. Transition through NORMAL if currently in VIBRATE so vibration engine clears
+                    if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
+                        try { am.ringerMode = AudioManager.RINGER_MODE_NORMAL } catch (_: Exception) {}
+                        delay(100)
+                    }
+
+                    // 2. Set ringer mode via AudioManager if permission granted
+                    if (hasNotificationPolicyAccess()) {
+                        try { am.ringerMode = AudioManager.RINGER_MODE_SILENT } catch (_: Exception) {}
+                    }
+
+                    // 3. Use privileged Shizuku shell to set Silent mode and ensure DND is OFF:
+                    //    - cmd audio set-ringer-mode 0 (SILENT)
+                    //    - cmd media_session volume --stream 2 --set 0 (Mute Ring)
+                    //    - cmd media_session volume --stream 5 --set 0 (Mute Notification)
+                    //    - cmd notification set_dnd off (Disable DND filter)
+                    //    - settings put global zen_mode 0 (Disable Zen Mode)
+                    //    - settings put global mode_ringer 0 (Set global ringer to Silent)
+                    executeShizukuCommands(
+                        "cmd audio set-ringer-mode 0",
+                        "cmd media_session volume --stream 2 --set 0",
+                        "cmd media_session volume --stream 5 --set 0",
+                        "cmd notification set_dnd off",
+                        "settings put global zen_mode 0",
+                        "settings put global mode_ringer 0"
+                    )
+
+                    // 4. Secondary pass after short delay to extinguish any asynchronous DND activation by AudioService
                     delay(150)
+                    executeShizukuCommands(
+                        "cmd notification set_dnd off",
+                        "settings put global zen_mode 0"
+                    )
+                } else {
+                    if (!hasNotificationPolicyAccess()) {
+                        throw SecurityException("Notification Policy Access is required to switch to Silent mode.")
+                    }
+                    if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
+                        am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                        delay(150)
+                    }
+                    am.ringerMode = AudioManager.RINGER_MODE_SILENT
                 }
-                am.ringerMode = AudioManager.RINGER_MODE_SILENT
             }
 
             RingerMode.VIBRATE -> {
                 am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+                if (isShizukuReady()) {
+                    executeShizukuCommands(
+                        "cmd audio set-ringer-mode 1",
+                        "cmd notification set_dnd off",
+                        "settings put global zen_mode 0",
+                        "settings put global mode_ringer 1"
+                    )
+                }
             }
 
             RingerMode.RING -> {
                 am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                if (isShizukuReady()) {
+                    executeShizukuCommands(
+                        "cmd audio set-ringer-mode 2",
+                        "cmd notification set_dnd off",
+                        "settings put global zen_mode 0",
+                        "settings put global mode_ringer 2"
+                    )
+                }
             }
         }
     }
