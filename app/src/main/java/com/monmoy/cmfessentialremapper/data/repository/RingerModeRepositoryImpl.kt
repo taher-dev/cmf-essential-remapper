@@ -3,7 +3,6 @@ package com.monmoy.cmfessentialremapper.data.repository
 import android.app.NotificationManager
 import android.content.Context
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -13,6 +12,7 @@ import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import com.monmoy.cmfessentialremapper.receiver.RingerModeReceiver
 import com.monmoy.cmfessentialremapper.service.EssentialKeyAccessibilityService
 import com.monmoy.cmfessentialremapper.utils.AudioUtils
+import com.monmoy.cmfessentialremapper.utils.EssentialSpaceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
-import rikka.shizuku.Shizuku
 
 class RingerModeRepositoryImpl(
     private val context: Context,
@@ -36,77 +35,15 @@ class RingerModeRepositoryImpl(
     // Cached volume to restore when leaving silent/vibrate mode to ring
     private var savedRingVolume: Int = 0
 
-    // Tracks when Silent mode was triggered to automatically suppress secondary DND activations
-    @Volatile
-    private var silentModeRequestedTimestamp: Long = 0L
-
-    private fun isShizukuReady(): Boolean {
-        return try {
-            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-        } catch (_: Throwable) {
-            false
-        }
-    }
-
-    private fun executeShizukuCommands(vararg commands: String) {
-        try {
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-
-            for (cmdStr in commands) {
-                try {
-                    val cmd = arrayOf("sh", "-c", cmdStr)
-                    val process = newProcessMethod.invoke(null, cmd, null, null) as Process
-                    process.waitFor()
-                } catch (_: Throwable) {}
-            }
-        } catch (_: Throwable) {}
-    }
-
-    override fun isDoNotDisturbActive(): Boolean {
-        val nm = notificationManager ?: return false
-        return nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
-    }
-
-    override suspend fun disableDoNotDisturb() = withContext(Dispatchers.IO) {
-        try {
-            if (hasNotificationPolicyAccess()) {
-                notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-            }
-        } catch (_: Exception) {}
-
-        if (isShizukuReady()) {
-            executeShizukuCommands(
-                "cmd notification set_dnd off",
-                "settings put global zen_mode 0"
-            )
-        }
-    }
-
     override fun observeRingerMode(): Flow<RingerMode> = callbackFlow {
         trySend(getCurrentRingerMode())
 
         val receiver = RingerModeReceiver {
-            // If DND was activated shortly after user requested Silent mode, auto-dismiss DND
-            if (System.currentTimeMillis() - silentModeRequestedTimestamp < 3500) {
-                if (isDoNotDisturbActive() && hasNotificationPolicyAccess()) {
-                    try {
-                        notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-                    } catch (_: Exception) {}
-                }
-            }
             trySend(getCurrentRingerMode())
         }
 
         val filter = IntentFilter().apply {
             addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
-            addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
-            addAction("android.media.VOLUME_CHANGED_ACTION")
-            addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -147,33 +84,36 @@ class RingerModeRepositoryImpl(
                 if (!hasNotificationPolicyAccess()) {
                     throw SecurityException("Notification Policy Access is required to switch to Silent mode.")
                 }
+
                 val currentVol = am.getStreamVolume(AudioManager.STREAM_RING)
                 if (currentVol > 0) {
                     savedRingVolume = currentVol
                 }
 
-                // 1. Clear Vibrate state trap:
-                // Direct jump from VIBRATE to SILENT is rejected by Android's state machine.
-                // We bounce through NORMAL to clear the vibration flag first.
-                if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
-                    am.ringerMode = AudioManager.RINGER_MODE_NORMAL
-                    delay(150)
+                // Directly apply SILENT mode
+                am.ringerMode = AudioManager.RINGER_MODE_SILENT
+                delay(120)
+
+                // If device didn't switch from VIBRATE to SILENT (Nothing OS quirk),
+                // explicitly mute ring/notification streams and retry
+                if (am.ringerMode != AudioManager.RINGER_MODE_SILENT) {
+                    try {
+                        am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
+                        am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0)
+                    } catch (_: Throwable) {}
+                    am.ringerMode = AudioManager.RINGER_MODE_SILENT
+                    delay(100)
                 }
 
-                // Mark timestamp so reactive receiver also intercepts and kills incoming DND activations
-                silentModeRequestedTimestamp = System.currentTimeMillis()
+                // Workaround: Turn off DND immediately after Silent mode is activated
+                turnOffDnd()
+                delay(100)
 
-                // 2. Set hardware/system ringer to SILENT
-                am.ringerMode = AudioManager.RINGER_MODE_SILENT
-
-                // 3. Multi-stage DND disengagement workaround:
-                // Android's AudioService asynchronously activates DND across IPC threads.
-                // We run a staged suppression sequence over 1.2s to turn off DND the moment it triggers.
-                repeat(4) { stage ->
-                    delay(if (stage == 0) 150 else 250)
-                    if (isDoNotDisturbActive()) {
-                        disableDoNotDisturb()
-                    }
+                // If turning off DND reverted the ringer mode on some ROMs, re-apply silent and re-clear DND
+                if (am.ringerMode != AudioManager.RINGER_MODE_SILENT) {
+                    am.ringerMode = AudioManager.RINGER_MODE_SILENT
+                    delay(80)
+                    turnOffDnd()
                 }
             }
 
@@ -182,25 +122,53 @@ class RingerModeRepositoryImpl(
                 if (currentVol > 0) {
                     savedRingVolume = currentVol
                 }
-                disableDoNotDisturb()
                 am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
+                delay(100)
+                // Ensure DND is turned off when leaving Silent
+                turnOffDnd()
             }
 
             RingerMode.RING -> {
-                disableDoNotDisturb()
                 am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                delay(100)
+                // Ensure DND is turned off when leaving Silent
+                turnOffDnd()
 
-                // Ensure ring volume is audible if it was muted
-                val currentVol = am.getStreamVolume(AudioManager.STREAM_RING)
-                if (currentVol == 0) {
-                    val max = am.getStreamMaxVolume(AudioManager.STREAM_RING)
-                    val target = if (savedRingVolume > 0) savedRingVolume else (max * 0.7).toInt().coerceAtLeast(1)
-                    try {
+                // Restore audible ring volume if it was muted
+                try {
+                    am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
+                    am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
+                    val vol = am.getStreamVolume(AudioManager.STREAM_RING)
+                    if (vol == 0) {
+                        val max = am.getStreamMaxVolume(AudioManager.STREAM_RING)
+                        val target = if (savedRingVolume > 0) savedRingVolume else (max * 0.7).toInt().coerceAtLeast(1)
                         am.setStreamVolume(AudioManager.STREAM_RING, target, 0)
-                    } catch (_: Exception) {}
-                }
+                    }
+                } catch (_: Throwable) {}
             }
         }
+    }
+
+    private suspend fun turnOffDnd() {
+        // Method 1: Official Android NotificationManager API
+        try {
+            if (hasNotificationPolicyAccess()) {
+                val currentFilter = notificationManager?.currentInterruptionFilter
+                if (currentFilter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+                    currentFilter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+                ) {
+                    notificationManager?.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+                }
+            }
+        } catch (_: Throwable) {}
+
+        // Method 2: Shizuku privileged shell command (if available)
+        try {
+            val spaceManager = EssentialSpaceManager(context)
+            if (spaceManager.isShizukuReady) {
+                spaceManager.runShizukuCommand(arrayOf("cmd", "notification", "set_dnd", "off"))
+            }
+        } catch (_: Throwable) {}
     }
 
     override fun observeEssentialKeyStatus(): Flow<EssentialKeyStatus> {
