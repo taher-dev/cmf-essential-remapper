@@ -29,6 +29,16 @@ interface RingerModeRepository {
     fun hasNotificationPolicyAccess(): Boolean
 
     /**
+     * Checks if Do Not Disturb (DND) / notification interruption filter is currently active.
+     */
+    fun isDoNotDisturbActive(): Boolean = false
+
+    /**
+     * Disables Do Not Disturb and restores normal interruption filtering.
+     */
+    suspend fun disableDoNotDisturb() {}
+
+    /**
      * Observes current Essential Key configuration status.
      */
     fun observeEssentialKeyStatus(): Flow<EssentialKeyStatus>
