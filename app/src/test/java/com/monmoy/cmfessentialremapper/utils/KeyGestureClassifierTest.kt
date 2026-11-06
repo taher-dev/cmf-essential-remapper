@@ -93,18 +93,18 @@ class KeyGestureClassifierTest {
         val classifier = KeyGestureClassifier(
             scope = this,
             doublePressWindowMs = 30L,
-            longPressThresholdMs = 40L
+            longPressThresholdMs = 50L
         ) { gesture ->
             gestures.add(gesture)
         }
 
         // Key down and held past threshold
         classifier.processKeyEvent(action = ACTION_DOWN, repeatCount = 0, eventTime = 1000L)
-        delay(60L)
+        delay(120L)
 
         // Key released after threshold
-        classifier.processKeyEvent(action = ACTION_UP, repeatCount = 0, eventTime = 1060L)
-        delay(50L)
+        classifier.processKeyEvent(action = ACTION_UP, repeatCount = 0, eventTime = 1120L)
+        delay(60L)
 
         // Only LONG_PRESS should fire; SINGLE_PRESS must NOT fire
         assertEquals(1, gestures.size)
