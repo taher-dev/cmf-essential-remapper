@@ -16,10 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -29,7 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBlack
@@ -40,47 +36,66 @@ import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurface
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
 
+private val SuccessGreen = Color(0xFF4CAF50)
+
 @Composable
-fun PermissionCard(
+fun StepGuideCard(
+    stepNumber: String,
     title: String,
-    explanation: String,
+    description: String,
     statusText: String,
-    isGranted: Boolean,
-    actionButtonText: String,
-    onActionClick: () -> Unit,
+    isCompleted: Boolean,
     modifier: Modifier = Modifier,
-    icon: ImageVector = if (isGranted) Icons.Filled.Check else Icons.Filled.Info
+    actions: @Composable () -> Unit
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(24.dp),
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = NothingSurface),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = androidx.compose.ui.graphics.SolidColor(
-                if (isGranted) NothingSurfaceBorder else CmfRedAccent.copy(alpha = 0.4f)
+                if (isCompleted) NothingSurfaceBorder else NothingSurfaceBorder
             )
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
+            // Header Row: Step Number + Title + Live Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    // Step Number pill
                     Box(
                         modifier = Modifier
-                            .size(7.dp)
-                            .clip(CircleShape)
-                            .background(if (isGranted) CmfRedAccent else NothingGrayDark)
-                    )
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isCompleted) NothingBlack else CmfRedAccent.copy(alpha = 0.15f))
+                            .border(
+                                1.dp,
+                                if (isCompleted) NothingSurfaceBorder else CmfRedAccent.copy(alpha = 0.5f),
+                                RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = stepNumber,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isCompleted) NothingWhite else CmfRedAccent
+                        )
+                    }
+
                     Spacer(modifier = Modifier.width(10.dp))
+
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
@@ -88,63 +103,62 @@ fun PermissionCard(
                     )
                 }
 
-                // Status chip
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Live Status Badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(NothingBlack)
                         .border(
                             1.dp,
-                            if (isGranted) NothingSurfaceBorder else CmfRedAccent.copy(alpha = 0.5f),
+                            if (isCompleted) SuccessGreen.copy(alpha = 0.5f) else NothingSurfaceBorder,
                             RoundedCornerShape(8.dp)
                         )
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 9.dp, vertical = 4.dp)
                 ) {
-                    Text(
-                        text = statusText.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isGranted) NothingGrayLight else CmfRedAccent
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isCompleted) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(CmfRedAccent)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = statusText.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isCompleted) SuccessGreen else NothingGrayLight
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // Minimal Description
             Text(
-                text = explanation,
+                text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = NothingGrayLight
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Button(
-                onClick = onActionClick,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isGranted) NothingBlack else CmfRedAccent,
-                    contentColor = NothingWhite
-                ),
-                shape = RoundedCornerShape(14.dp),
-                border = if (isGranted) androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder) else null
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = actionButtonText,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+            // Action Buttons
+            actions()
         }
     }
 }
-

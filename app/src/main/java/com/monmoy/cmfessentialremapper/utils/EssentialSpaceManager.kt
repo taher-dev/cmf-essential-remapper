@@ -25,9 +25,15 @@ data class EssentialSpaceStatus(
     val isShizukuRunning: Boolean,
     val isShizukuPermissionGranted: Boolean
 ) {
+    val areBothDisabled: Boolean
+        get() = (spacePackageStatus == PackageInstallStatus.DISABLED || spacePackageStatus == PackageInstallStatus.NOT_INSTALLED) &&
+                (recorderPackageStatus == PackageInstallStatus.DISABLED || recorderPackageStatus == PackageInstallStatus.NOT_INSTALLED)
+
     val isTakeoverReady: Boolean
-        get() = spacePackageStatus == PackageInstallStatus.DISABLED ||
-                spacePackageStatus == PackageInstallStatus.NOT_INSTALLED
+        get() = areBothDisabled
+
+    val isShizukuReady: Boolean
+        get() = isShizukuRunning && isShizukuPermissionGranted
 }
 
 /**
@@ -120,15 +126,9 @@ class EssentialSpaceManager(private val context: Context) {
         }
     }
 
-    fun createInstallShizukuIntent(): Intent {
-        return try {
-            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$PKG_SHIZUKU")).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-        } catch (_: Exception) {
-            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$PKG_SHIZUKU")).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
+    fun createDownloadShizukuIntent(): Intent {
+        return Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$PKG_SHIZUKU")).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
     }
 
@@ -138,22 +138,10 @@ class EssentialSpaceManager(private val context: Context) {
         }
     }
 
-    fun createOpenDeveloperOptionsIntent(): Intent {
-        return try {
-            Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-        } catch (_: Exception) {
-            Intent(Settings.ACTION_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-        }
-    }
-
     suspend fun setPackageEnabledShizuku(packageName: String, enable: Boolean): Result<Boolean> =
         withContext(Dispatchers.IO) {
             if (!isShizukuRunning()) {
-                return@withContext Result.failure(IllegalStateException("Shizuku service is not running. Please start Shizuku first."))
+                return@withContext Result.failure(IllegalStateException("Shizuku service is not running."))
             }
             if (!isShizukuPermissionGranted()) {
                 return@withContext Result.failure(SecurityException("Shizuku permission not granted."))
@@ -189,5 +177,25 @@ class EssentialSpaceManager(private val context: Context) {
                 Result.failure(e)
             }
         }
+
+    suspend fun disableBothEssentialPackages(): Result<Boolean> = withContext(Dispatchers.IO) {
+        val r1 = setPackageEnabledShizuku(PKG_ESSENTIAL_SPACE, false)
+        val r2 = setPackageEnabledShizuku(PKG_ESSENTIAL_RECORDER, false)
+        if (r1.isSuccess || r2.isSuccess) {
+            Result.success(true)
+        } else {
+            r1
+        }
+    }
+
+    suspend fun enableBothEssentialPackages(): Result<Boolean> = withContext(Dispatchers.IO) {
+        val r1 = setPackageEnabledShizuku(PKG_ESSENTIAL_SPACE, true)
+        val r2 = setPackageEnabledShizuku(PKG_ESSENTIAL_RECORDER, true)
+        if (r1.isSuccess && r2.isSuccess) {
+            Result.success(true)
+        } else {
+            r1
+        }
+    }
 }
 

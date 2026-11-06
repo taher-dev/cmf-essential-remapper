@@ -17,27 +17,16 @@ class SetupReadinessTest {
         assertFalse(state.isRingerToggleReady)
         assertFalse(state.isSinglePressTakeoverReady)
         assertEquals(0f, state.progressPercent, 0.01f)
+        assertEquals(0, state.completedStepCount)
     }
 
     @Test
-    fun testDetectionReadyRequiresBothServiceAndKey() {
-        val onlyService = SetupUiState(
-            isAccessibilityServiceEnabled = true,
-            isKeyIdentified = false
-        )
-        assertFalse(onlyService.isDetectionReady)
+    fun testDetectionReadyRequiresAccessibilityService() {
+        val serviceDisabled = SetupUiState(isAccessibilityServiceEnabled = false)
+        assertFalse(serviceDisabled.isDetectionReady)
 
-        val onlyKey = SetupUiState(
-            isAccessibilityServiceEnabled = false,
-            isKeyIdentified = true
-        )
-        assertFalse(onlyKey.isDetectionReady)
-
-        val both = SetupUiState(
-            isAccessibilityServiceEnabled = true,
-            isKeyIdentified = true
-        )
-        assertTrue(both.isDetectionReady)
+        val serviceEnabled = SetupUiState(isAccessibilityServiceEnabled = true)
+        assertTrue(serviceEnabled.isDetectionReady)
     }
 
     @Test
@@ -54,14 +43,13 @@ class SetupReadinessTest {
         // Essential Space active (ENABLED) -> not ready
         val spaceActive = SetupUiState(
             isAccessibilityServiceEnabled = true,
-            isKeyIdentified = true,
             isNotificationPolicyAccessGranted = true,
             essentialSpaceStatus = EssentialSpaceStatus(
                 spacePackageStatus = PackageInstallStatus.ENABLED,
                 recorderPackageStatus = PackageInstallStatus.ENABLED,
-                isShizukuInstalled = false,
-                isShizukuRunning = false,
-                isShizukuPermissionGranted = false
+                isShizukuInstalled = true,
+                isShizukuRunning = true,
+                isShizukuPermissionGranted = true
             )
         )
         assertFalse(spaceActive.isSinglePressTakeoverReady)
@@ -69,14 +57,13 @@ class SetupReadinessTest {
         // Essential Space DISABLED -> ready
         val spaceDisabled = SetupUiState(
             isAccessibilityServiceEnabled = true,
-            isKeyIdentified = true,
             isNotificationPolicyAccessGranted = true,
             essentialSpaceStatus = EssentialSpaceStatus(
                 spacePackageStatus = PackageInstallStatus.DISABLED,
                 recorderPackageStatus = PackageInstallStatus.DISABLED,
-                isShizukuInstalled = false,
-                isShizukuRunning = false,
-                isShizukuPermissionGranted = false
+                isShizukuInstalled = true,
+                isShizukuRunning = true,
+                isShizukuPermissionGranted = true
             )
         )
         assertTrue(spaceDisabled.isSinglePressTakeoverReady)
@@ -84,21 +71,27 @@ class SetupReadinessTest {
 
     @Test
     fun testProgressPercentCalculation() {
+        val step2Done = SetupUiState(
+            isNotificationPolicyAccessGranted = true,
+            isAccessibilityServiceEnabled = true
+        )
+        assertEquals(2, step2Done.completedStepCount)
+        assertEquals(0.4f, step2Done.progressPercent, 0.01f)
+
         val fullyConfigured = SetupUiState(
             isNotificationPolicyAccessGranted = true,
             isAccessibilityServiceEnabled = true,
             isBatteryOptimizationIgnored = true,
-            isKeyIdentified = true,
             essentialSpaceStatus = EssentialSpaceStatus(
                 spacePackageStatus = PackageInstallStatus.DISABLED,
                 recorderPackageStatus = PackageInstallStatus.DISABLED,
-                isShizukuInstalled = false,
-                isShizukuRunning = false,
-                isShizukuPermissionGranted = false
+                isShizukuInstalled = true,
+                isShizukuRunning = true,
+                isShizukuPermissionGranted = true
             )
         )
 
+        assertEquals(5, fullyConfigured.completedStepCount)
         assertEquals(1.0f, fullyConfigured.progressPercent, 0.01f)
     }
 }
-

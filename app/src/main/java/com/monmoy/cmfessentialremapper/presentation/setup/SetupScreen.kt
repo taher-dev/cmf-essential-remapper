@@ -1,5 +1,8 @@
 package com.monmoy.cmfessentialremapper.presentation.setup
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -19,73 +22,81 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.monmoy.cmfessentialremapper.presentation.setup.components.AccessibilityDisclosureDialog
-import com.monmoy.cmfessentialremapper.presentation.setup.components.EssentialSpaceCard
-import com.monmoy.cmfessentialremapper.presentation.setup.components.PermissionCard
-import com.monmoy.cmfessentialremapper.presentation.setup.components.SetupProgressIndicator
-import com.monmoy.cmfessentialremapper.presentation.setup.components.ShizukuSetupDialog
+import com.monmoy.cmfessentialremapper.presentation.setup.components.StepGuideCard
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBackground
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBlack
-import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayDark
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayLight
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayMedium
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurface
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
+import com.monmoy.cmfessentialremapper.utils.EssentialSpaceManager
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val SuccessGreen = Color(0xFF4CAF50)
+
 @Composable
 fun SetupScreen(
     uiState: SetupUiState,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onOpenNotificationPolicy: () -> Unit,
-    onOpenRestrictedSettingsGuide: () -> Unit,
     onAccessibilityClick: () -> Unit,
     onConfirmAccessibilityDisclosure: () -> Unit,
     onDismissAccessibilityDisclosure: () -> Unit,
+    onOpenAppInfoForRestrictedSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
-    onOpenKeyLearning: () -> Unit,
-    onDisablePackage: (String) -> Unit,
-    onConfirmDisablePackage: (String) -> Unit,
-    onDismissDisableConfirmation: () -> Unit,
-    onRestorePackage: (String) -> Unit,
-    onOpenAppInfo: (String) -> Unit,
-    onRestoreAllPackages: () -> Unit,
+    onDownloadShizuku: () -> Unit,
+    onOpenShizuku: () -> Unit,
     onRequestShizukuPermission: () -> Unit,
-    onOpenShizukuSetup: () -> Unit,
-    onDismissShizukuSetup: () -> Unit,
-    onLaunchShizukuApp: () -> Unit,
-    onInstallShizuku: () -> Unit,
-    onOpenDeveloperOptions: () -> Unit,
-    onCopyAdbCommand: (String) -> Unit,
+    onDisableBothEssentialApps: () -> Unit,
+    onRestoreBothEssentialApps: () -> Unit,
+    onOpenManualAppInfo: (String) -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Live auto-refresh whenever the user returns to this screen from any system setting or app
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onRefreshClick()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(uiState.infoMessage, uiState.errorMessage) {
         uiState.infoMessage?.let {
@@ -97,6 +108,12 @@ fun SetupScreen(
             onClearMessages()
         }
     }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = uiState.progressPercent,
+        animationSpec = tween(durationMillis = 350),
+        label = "stepProgress"
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -110,11 +127,11 @@ fun SetupScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
-            // Setup Header
+            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -122,7 +139,7 @@ fun SetupScreen(
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .background(NothingSurface)
                             .border(1.dp, NothingSurfaceBorder, CircleShape)
@@ -137,12 +154,12 @@ fun SetupScreen(
                     Spacer(modifier = Modifier.width(14.dp))
                     Column {
                         Text(
-                            text = "SETUP & PERMISSIONS",
+                            text = "SETUP GUIDE",
                             style = MaterialTheme.typography.titleMedium,
                             color = NothingWhite
                         )
                         Text(
-                            text = "CMF Phone 2 Pro Integration",
+                            text = "Step-by-step CMF 2 Pro configuration",
                             style = MaterialTheme.typography.labelSmall,
                             color = NothingGrayMedium
                         )
@@ -152,7 +169,7 @@ fun SetupScreen(
                 IconButton(
                     onClick = onRefreshClick,
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(36.dp)
                         .clip(CircleShape)
                         .background(NothingSurface)
                         .border(1.dp, NothingSurfaceBorder, CircleShape)
@@ -166,168 +183,352 @@ fun SetupScreen(
                 }
             }
 
-            // Readiness Progress Indicator
-            SetupProgressIndicator(
-                progressPercent = uiState.progressPercent,
-                isDetectionReady = uiState.isDetectionReady,
-                isRingerToggleReady = uiState.isRingerToggleReady,
-                isSinglePressTakeoverReady = uiState.isSinglePressTakeoverReady
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Card 1: Notification Policy Access
-            PermissionCard(
-                title = "Notification Policy Access",
-                explanation = "Required by Android to use the standard Silent ringer mode without throwing security exceptions.",
-                statusText = if (uiState.isNotificationPolicyAccessGranted) "Granted" else "Required",
-                isGranted = uiState.isNotificationPolicyAccessGranted,
-                actionButtonText = if (uiState.isNotificationPolicyAccessGranted) "Settings (Granted)" else "Grant Access",
-                onActionClick = onOpenNotificationPolicy
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Card 2: Restricted Settings (Sideload Protection)
-            PermissionCard(
-                title = "Restricted Settings",
-                explanation = "On Android 13+, sideloaded apps may have Accessibility blocked until 'Allow restricted settings' is enabled in App Info (three-dot menu).",
-                statusText = if (uiState.isAccessibilityServiceEnabled) "Ready" else "Action Required",
-                isGranted = uiState.isAccessibilityServiceEnabled,
-                actionButtonText = "Open App Info",
-                onActionClick = onOpenRestrictedSettingsGuide
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Card 3: Accessibility Service
-            PermissionCard(
-                title = "Accessibility Settings",
-                explanation = "Enables physical Essential Key hardware event detection. Processes key events locally without reading screen content.",
-                statusText = if (uiState.isAccessibilityServiceEnabled) "Enabled" else "Disabled",
-                isGranted = uiState.isAccessibilityServiceEnabled,
-                actionButtonText = if (uiState.isAccessibilityServiceEnabled) "Service Configured" else "Enable Accessibility",
-                onActionClick = onAccessibilityClick
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Card 4: Battery Optimization
-            PermissionCard(
-                title = "Battery Optimization",
-                explanation = "Allows CMF Essential Remapper to remain responsive in the background under Nothing OS aggressive app standby.",
-                statusText = if (uiState.isBatteryOptimizationIgnored) "Unrestricted" else "Optimized",
-                isGranted = uiState.isBatteryOptimizationIgnored,
-                actionButtonText = "Battery Settings",
-                onActionClick = onOpenBatterySettings
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Key Identification & Learning Card
-            Card(
+            // Minimal Progress Card
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = NothingSurface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(NothingSurfaceBorder)
-                )
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(NothingSurface)
+                    .border(1.dp, NothingSurfaceBorder, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
+                Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(if (uiState.isKeyIdentified) CmfRedAccent else NothingGrayDark)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Essential Key Identifier",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = NothingWhite
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NothingBlack)
-                                .border(1.dp, NothingSurfaceBorder, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = if (uiState.isKeyIdentified) "MAPPED" else "DEFAULT (0/250)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.isKeyIdentified) NothingWhite else NothingGrayMedium
-                            )
-                        }
+                        Text(
+                            text = "COMPLETION PROGRESS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NothingGrayMedium
+                        )
+                        Text(
+                            text = "${uiState.completedStepCount} / 5 COMPLETED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (uiState.completedStepCount == 5) SuccessGreen else NothingWhite
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(
-                        text = "Current configuration: KeyCode ${uiState.learnedKeyCode}, ScanCode ${uiState.learnedScanCode}. Verify or dynamically learn the key on your CMF Phone 2 Pro.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NothingGrayLight
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(CircleShape),
+                        color = if (uiState.completedStepCount == 5) SuccessGreen else CmfRedAccent,
+                        trackColor = NothingBlack
                     )
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = onOpenKeyLearning,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = NothingBlack),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder)
-                    ) {
+            // Completion Banner (if all 5 steps are done)
+            AnimatedVisibility(visible = uiState.completedStepCount == 5) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(NothingSurface)
+                        .border(1.dp, SuccessGreen.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .padding(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = SuccessGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "OPEN KEY DETECTION & LEARNING",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = "ALL SET — Physical key is ready to cycle ringer modes.",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = NothingWhite
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Essential Space Control Section
-            EssentialSpaceCard(
-                status = uiState.essentialSpaceStatus,
-                onDisablePackage = onDisablePackage,
-                onRestorePackage = onRestorePackage,
-                onOpenAppInfo = onOpenAppInfo,
-                onRestoreAll = onRestoreAllPackages,
-                onRequestShizukuPermission = onRequestShizukuPermission,
-                onOpenShizukuSetup = onOpenShizukuSetup
-            )
+            // Step 1: Notification Access
+            StepGuideCard(
+                stepNumber = "01",
+                title = "Notification Access",
+                description = "Required by Android to switch system ringer to Silent mode without DND restrictions.",
+                statusText = if (uiState.isNotificationPolicyAccessGranted) "Granted" else "Required",
+                isCompleted = uiState.isNotificationPolicyAccessGranted
+            ) {
+                Button(
+                    onClick = onOpenNotificationPolicy,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.isNotificationPolicyAccessGranted) NothingBlack else CmfRedAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = if (uiState.isNotificationPolicyAccessGranted) androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder) else null
+                ) {
+                    Text(
+                        text = if (uiState.isNotificationPolicyAccessGranted) "OPEN NOTIFICATION SETTINGS" else "GRANT ACCESS",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = NothingWhite
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(30.dp))
-        }
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // Shizuku Setup Guide Dialog
-        if (uiState.showShizukuSetupDialog) {
-            ShizukuSetupDialog(
-                status = uiState.essentialSpaceStatus,
-                onDismissRequest = onDismissShizukuSetup,
-                onLaunchShizuku = onLaunchShizukuApp,
-                onInstallShizuku = onInstallShizuku,
-                onOpenDeveloperOptions = onOpenDeveloperOptions,
-                onRequestShizukuPermission = onRequestShizukuPermission,
-                onCopyAdbCommand = onCopyAdbCommand
-            )
+            // Step 2: Accessibility Settings -> Restricted Settings
+            StepGuideCard(
+                stepNumber = "02",
+                title = "Accessibility & Restricted Settings",
+                description = "Enables hardware key detection. If greyed out on Android 13+, tap 'App Info' → three dots → 'Allow restricted settings'.",
+                statusText = if (uiState.isAccessibilityServiceEnabled) "Enabled" else "Action Needed",
+                isCompleted = uiState.isAccessibilityServiceEnabled
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onAccessibilityClick,
+                        modifier = Modifier.weight(1.3f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (uiState.isAccessibilityServiceEnabled) NothingBlack else CmfRedAccent
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = if (uiState.isAccessibilityServiceEnabled) androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder) else null
+                    ) {
+                        Text(
+                            text = if (uiState.isAccessibilityServiceEnabled) "ACCESSIBILITY" else "ENABLE SERVICE",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = NothingWhite
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onOpenAppInfoForRestrictedSettings,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
+                    ) {
+                        Text(
+                            text = "APP INFO",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = NothingGrayLight
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Step 3: Battery Optimization (Direct package prompt)
+            StepGuideCard(
+                stepNumber = "03",
+                title = "Battery Optimization",
+                description = "Sets background usage to Unrestricted so Nothing OS does not kill key detection in standby.",
+                statusText = if (uiState.isBatteryOptimizationIgnored) "Unrestricted" else "Optimized",
+                isCompleted = uiState.isBatteryOptimizationIgnored
+            ) {
+                Button(
+                    onClick = onOpenBatterySettings,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.isBatteryOptimizationIgnored) NothingBlack else CmfRedAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = if (uiState.isBatteryOptimizationIgnored) androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder) else null
+                ) {
+                    Text(
+                        text = if (uiState.isBatteryOptimizationIgnored) "BATTERY SETTINGS" else "SET UNRESTRICTED",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = NothingWhite
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Step 4: Setup Shizuku
+            val shizukuReady = uiState.essentialSpaceStatus.isShizukuReady
+            val shizukuRunning = uiState.essentialSpaceStatus.isShizukuRunning
+            val shizukuInstalled = uiState.essentialSpaceStatus.isShizukuInstalled
+
+            val shizukuStatus = when {
+                shizukuReady -> "Authorized"
+                shizukuRunning -> "Authorization Needed"
+                shizukuInstalled -> "Not Running"
+                else -> "Not Installed"
+            }
+
+            val shizukuDescription = when {
+                shizukuReady -> "Shizuku is running and authorized. 1-tap disabling of Nothing OS overlays is active."
+                shizukuRunning -> "Shizuku is active. Tap 'Authorize App' to grant package management permission."
+                shizukuInstalled -> "Open Shizuku and start it via Wireless Debugging, then return to this screen."
+                else -> "Download Shizuku to allow 1-tap disabling of Essential Space without rooting."
+            }
+
+            StepGuideCard(
+                stepNumber = "04",
+                title = "Setup Shizuku",
+                description = shizukuDescription,
+                statusText = shizukuStatus,
+                isCompleted = shizukuReady
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (!shizukuInstalled) {
+                        Button(
+                            onClick = onDownloadShizuku,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "DOWNLOAD SHIZUKU",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingWhite
+                            )
+                        }
+                    } else if (!shizukuRunning) {
+                        Button(
+                            onClick = onOpenShizuku,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "OPEN SHIZUKU",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingWhite
+                            )
+                        }
+                    } else if (!shizukuReady) {
+                        Button(
+                            onClick = onRequestShizukuPermission,
+                            modifier = Modifier.weight(1.3f),
+                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "AUTHORIZE APP",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingWhite
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = onOpenShizuku,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
+                        ) {
+                            Text(
+                                text = "OPEN",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingGrayLight
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onOpenShizuku,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
+                        ) {
+                            Text(
+                                text = "OPEN SHIZUKU",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingGrayLight
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Step 5: Disable Essential Space & Recorder with One Button Tap
+            val areBothDisabled = uiState.essentialSpaceStatus.areBothDisabled
+            StepGuideCard(
+                stepNumber = "05",
+                title = "Disable Essential Apps",
+                description = "Disables Essential Space & Recorder so single-pressing the physical key doesn't trigger Nothing OS overlays.",
+                statusText = if (areBothDisabled) "Disabled" else "Active",
+                isCompleted = areBothDisabled
+            ) {
+                if (!areBothDisabled) {
+                    Column {
+                        Button(
+                            onClick = onDisableBothEssentialApps,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isPerformingAction,
+                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (uiState.isPerformingAction) "DISABLING..." else "DISABLE BOTH APPS (1-TAP)",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = NothingWhite
+                            )
+                        }
+
+                        if (!shizukuReady) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { onOpenManualAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
+                            ) {
+                                Text(
+                                    text = "MANUAL DISABLE VIA APP INFO",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = NothingGrayLight
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Both packages are disabled.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SuccessGreen
+                        )
+                        OutlinedButton(
+                            onClick = onRestoreBothEssentialApps,
+                            enabled = !uiState.isPerformingAction,
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, NothingSurfaceBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NothingWhite)
+                        ) {
+                            Text(
+                                text = "RE-ENABLE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NothingGrayLight
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
         }
 
         // Accessibility Disclosure Dialog
@@ -337,57 +538,5 @@ fun SetupScreen(
                 onDismissRequest = onDismissAccessibilityDisclosure
             )
         }
-
-        // Package Disable Confirmation Dialog
-        uiState.packageToDisableConfirm?.let { pkg ->
-            BasicAlertDialog(
-                onDismissRequest = onDismissDisableConfirmation
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(NothingSurface)
-                        .border(1.dp, NothingSurfaceBorder, RoundedCornerShape(24.dp))
-                        .padding(24.dp)
-                ) {
-                    Text(
-                        text = "DISABLE PACKAGE CONFIRMATION",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CmfRedAccent
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Disable $pkg?",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = NothingWhite
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Disabling this Nothing OS system package will stop Essential Space from intercepting the physical key. You can restore this package anytime from this screen.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = NothingGrayLight
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = onDismissDisableConfirmation) {
-                            Text(text = "CANCEL", color = NothingGrayLight)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = { onConfirmDisablePackage(pkg) },
-                            colors = ButtonDefaults.buttonColors(containerColor = CmfRedAccent),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(text = "DISABLE PACKAGE", color = NothingWhite)
-                        }
-                    }
-                }
-            }
-        }
     }
 }
-

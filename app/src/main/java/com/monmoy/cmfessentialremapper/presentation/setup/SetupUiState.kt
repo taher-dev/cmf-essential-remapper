@@ -7,9 +7,6 @@ data class SetupUiState(
     val isNotificationPolicyAccessGranted: Boolean = false,
     val isAccessibilityServiceEnabled: Boolean = false,
     val isBatteryOptimizationIgnored: Boolean = false,
-    val isKeyIdentified: Boolean = false,
-    val learnedKeyCode: Int = 0,
-    val learnedScanCode: Int = 250,
     val essentialSpaceStatus: EssentialSpaceStatus = EssentialSpaceStatus(
         spacePackageStatus = PackageInstallStatus.ENABLED,
         recorderPackageStatus = PackageInstallStatus.ENABLED,
@@ -19,17 +16,14 @@ data class SetupUiState(
     ),
     val isPerformingAction: Boolean = false,
     val showAccessibilityDisclosure: Boolean = false,
-    val showShizukuSetupDialog: Boolean = false,
-    val packageToDisableConfirm: String? = null,
-    val showRestoreConfirmation: Boolean = false,
     val infoMessage: String? = null,
     val errorMessage: String? = null
 ) {
     /**
-     * Detection is ready when accessibility service is running and the hardware key is identified.
+     * Detection is ready when accessibility service is enabled (physical key is auto-detected).
      */
     val isDetectionReady: Boolean
-        get() = isAccessibilityServiceEnabled && isKeyIdentified
+        get() = isAccessibilityServiceEnabled
 
     /**
      * Ringer toggle is ready when notification policy access (DND/Silent access) is granted.
@@ -43,15 +37,26 @@ data class SetupUiState(
     val isSinglePressTakeoverReady: Boolean
         get() = isDetectionReady && isRingerToggleReady && essentialSpaceStatus.isTakeoverReady
 
+    /**
+     * 5-step progress calculation:
+     * 1. Notification Access
+     * 2. Accessibility & Restricted Settings
+     * 3. Battery Optimization
+     * 4. Shizuku Setup & Authorization
+     * 5. Disable Essential Space & Recorder
+     */
     val progressPercent: Float
+        get() = completedStepCount / 5f
+
+    val completedStepCount: Int
         get() {
             var completed = 0
             if (isNotificationPolicyAccessGranted) completed++
             if (isAccessibilityServiceEnabled) completed++
             if (isBatteryOptimizationIgnored) completed++
-            if (isKeyIdentified) completed++
+            if (essentialSpaceStatus.isShizukuReady) completed++
             if (essentialSpaceStatus.isTakeoverReady) completed++
-            return completed / 5f
+            return completed
         }
 }
 

@@ -1,12 +1,8 @@
 package com.monmoy.cmfessentialremapper.utils
 
-import android.view.KeyEvent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyGestureClassifierTest {
@@ -135,4 +131,3 @@ class KeyGestureClassifierTest {
         assertEquals(0, actionCount)
     }
 }
-

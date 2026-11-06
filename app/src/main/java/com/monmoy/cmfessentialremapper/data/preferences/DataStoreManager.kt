@@ -54,7 +54,7 @@ class DataStoreManager(private val context: Context) {
     }
 
     val isKeyConfigured: Flow<Boolean> = preferencesFlow.map { preferences ->
-        preferences[PreferenceKeys.KEY_IS_KEY_CONFIGURED] ?: false
+        preferences[PreferenceKeys.KEY_IS_KEY_CONFIGURED] ?: true
     }
 
     val doublePressWindowMs: Flow<Long> = preferencesFlow.map { preferences ->

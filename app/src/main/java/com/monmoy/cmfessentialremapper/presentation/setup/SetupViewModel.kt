@@ -2,8 +2,6 @@ package com.monmoy.cmfessentialremapper.presentation.setup
 
 import android.app.Application
 import android.app.NotificationManager
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -11,20 +9,18 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.monmoy.cmfessentialremapper.data.preferences.DataStoreManager
 import com.monmoy.cmfessentialremapper.service.EssentialKeyAccessibilityService
 import com.monmoy.cmfessentialremapper.utils.EssentialSpaceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 
 class SetupViewModel(application: Application) : AndroidViewModel(application) {
 
     private val context = application.applicationContext
-    private val dataStoreManager = DataStoreManager(context)
     private val spaceManager = EssentialSpaceManager(context)
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -32,27 +28,36 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(SetupUiState())
     val uiState: StateFlow<SetupUiState> = _uiState.asStateFlow()
 
-    init {
-        observeKeyAndServiceStatus()
+    private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { _, _ ->
+        refreshStatus()
+    }
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        refreshStatus()
+    }
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
         refreshStatus()
     }
 
-    private fun observeKeyAndServiceStatus() {
+    init {
+        observeAccessibilityService()
+        registerShizukuListeners()
+        refreshStatus()
+    }
+
+    private fun registerShizukuListeners() {
+        try {
+            Shizuku.addRequestPermissionResultListener(permissionResultListener)
+            Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+            Shizuku.addBinderDeadListener(binderDeadListener)
+        } catch (_: Throwable) {}
+    }
+
+    private fun observeAccessibilityService() {
         viewModelScope.launch {
-            combine(
-                dataStoreManager.isKeyConfigured,
-                dataStoreManager.learnedKeyCode,
-                dataStoreManager.learnedScanCode,
-                EssentialKeyAccessibilityService.isServiceRunning
-            ) { isConfigured, keyCode, scanCode, isServiceRunning ->
-                Quadruple(isConfigured, keyCode, scanCode, isServiceRunning)
-            }.collect { (isConfigured, keyCode, scanCode, isServiceRunning) ->
+            EssentialKeyAccessibilityService.isServiceRunning.collect { isRunning ->
                 _uiState.update { current ->
                     current.copy(
-                        isKeyIdentified = isConfigured,
-                        learnedKeyCode = keyCode,
-                        learnedScanCode = scanCode,
-                        isAccessibilityServiceEnabled = isServiceRunning || checkAccessibilityEnabledFromSettings()
+                        isAccessibilityServiceEnabled = isRunning || checkAccessibilityEnabledFromSettings()
                     )
                 }
             }
@@ -87,12 +92,23 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Step 1: Notification Policy Access
+    fun onOpenNotificationPolicySettings() {
+        try {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            _uiState.update { it.copy(errorMessage = "Could not open Notification Policy Settings.") }
+        }
+    }
+
+    // Step 2: Accessibility & Restricted Settings
     fun onAccessibilityCardClicked() {
         if (_uiState.value.isAccessibilityServiceEnabled) {
-            // Already enabled, open settings directly for user inspection
             openAccessibilitySettings()
         } else {
-            // Show required explicit disclosure before opening settings
             _uiState.update { it.copy(showAccessibilityDisclosure = true) }
         }
     }
@@ -117,17 +133,6 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onOpenNotificationPolicySettings() {
-        try {
-            val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
-        } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not open Notification Policy Settings.") }
-        }
-    }
-
     fun onOpenAppInfoForRestrictedSettings() {
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -140,52 +145,76 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Step 3: Battery Optimization (Directly prompts system dialog for this package)
     fun onOpenBatteryOptimizationSettings() {
         try {
-            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
         } catch (_: Exception) {
             try {
-                val fallback = Intent(Settings.ACTION_SETTINGS).apply {
+                val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(fallback)
             } catch (_: Exception) {
-                _uiState.update { it.copy(errorMessage = "Could not open Battery Settings.") }
+                try {
+                    val appDetails = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(appDetails)
+                } catch (_: Exception) {
+                    _uiState.update { it.copy(errorMessage = "Could not open Battery Settings.") }
+                }
             }
         }
     }
 
-    fun onOpenPackageAppInfo(packageName: String) {
+    // Step 4: Shizuku Setup & Authorization
+    fun onDownloadShizuku() {
         try {
-            val intent = spaceManager.createOpenAppInfoIntent(packageName)
-            context.startActivity(intent)
+            context.startActivity(spaceManager.createDownloadShizukuIntent())
         } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not open App Info for $packageName.") }
+            _uiState.update { it.copy(errorMessage = "Could not open Play Store.") }
         }
     }
 
-    fun onRequestDisablePackageConfirmation(packageName: String) {
-        _uiState.update { it.copy(packageToDisableConfirm = packageName) }
+    fun onOpenShizuku() {
+        try {
+            val intent = spaceManager.createOpenShizukuIntent()
+            if (intent != null) {
+                context.startActivity(intent)
+            } else {
+                onDownloadShizuku()
+            }
+        } catch (_: Exception) {
+            onDownloadShizuku()
+        }
     }
 
-    fun onDismissDisablePackageConfirmation() {
-        _uiState.update { it.copy(packageToDisableConfirm = null) }
+    fun onRequestShizukuPermission() {
+        if (!spaceManager.isShizukuRunning()) {
+            onOpenShizuku()
+            return
+        }
+        spaceManager.requestShizukuPermission(1001)
     }
 
-    fun onConfirmDisablePackage(packageName: String) {
-        _uiState.update { it.copy(packageToDisableConfirm = null, isPerformingAction = true) }
+    // Step 5: Disable Essential Space & Recorder with One Button Tap
+    fun onDisableBothEssentialApps() {
+        _uiState.update { it.copy(isPerformingAction = true) }
         viewModelScope.launch {
             if (spaceManager.isShizukuRunning() && spaceManager.isShizukuPermissionGranted()) {
-                val result = spaceManager.setPackageEnabledShizuku(packageName, enable = false)
+                val result = spaceManager.disableBothEssentialPackages()
                 result.fold(
                     onSuccess = {
                         _uiState.update {
                             it.copy(
                                 isPerformingAction = false,
-                                infoMessage = "Successfully disabled $packageName via Shizuku."
+                                infoMessage = "Essential Space and Recorder successfully disabled."
                             )
                         }
                     },
@@ -198,39 +227,31 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 )
-            } else if (spaceManager.isShizukuRunning() && !spaceManager.isShizukuPermissionGranted()) {
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        infoMessage = "Shizuku permission required. Requesting permission..."
-                    )
-                }
-                spaceManager.requestShizukuPermission(1001)
             } else {
-                // Route user to setup Shizuku since Nothing OS protects system apps in Settings
+                // If Shizuku not ready, guide user to manual App Info
                 _uiState.update {
                     it.copy(
                         isPerformingAction = false,
-                        showShizukuSetupDialog = true,
-                        infoMessage = "Nothing OS prevents disabling system apps via App Info. Please set up Shizuku."
+                        errorMessage = "Please authorize Shizuku in Step 4, or disable in App Info."
                     )
                 }
+                onOpenPackageAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE)
             }
             refreshStatus()
         }
     }
 
-    fun onRestorePackage(packageName: String) {
+    fun onRestoreBothEssentialApps() {
         _uiState.update { it.copy(isPerformingAction = true) }
         viewModelScope.launch {
             if (spaceManager.isShizukuRunning() && spaceManager.isShizukuPermissionGranted()) {
-                val result = spaceManager.setPackageEnabledShizuku(packageName, enable = true)
+                val result = spaceManager.enableBothEssentialPackages()
                 result.fold(
                     onSuccess = {
                         _uiState.update {
                             it.copy(
                                 isPerformingAction = false,
-                                infoMessage = "Successfully restored $packageName."
+                                infoMessage = "Essential Space and Recorder restored."
                             )
                         }
                     },
@@ -238,114 +259,38 @@ class SetupViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.update {
                             it.copy(
                                 isPerformingAction = false,
-                                errorMessage = "Shizuku restore failed: ${err.localizedMessage}."
+                                errorMessage = "Restore failed: ${err.localizedMessage}."
                             )
                         }
                     }
                 )
-            } else if (spaceManager.isShizukuRunning() && !spaceManager.isShizukuPermissionGranted()) {
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        infoMessage = "Shizuku permission required. Requesting permission..."
-                    )
-                }
-                spaceManager.requestShizukuPermission(1001)
             } else {
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        showShizukuSetupDialog = true
-                    )
-                }
+                _uiState.update { it.copy(isPerformingAction = false) }
+                onOpenPackageAppInfo(EssentialSpaceManager.PKG_ESSENTIAL_SPACE)
             }
             refreshStatus()
         }
     }
 
-    fun onRestoreAllPackages() {
-        _uiState.update { it.copy(isPerformingAction = true) }
-        viewModelScope.launch {
-            if (spaceManager.isShizukuRunning() && spaceManager.isShizukuPermissionGranted()) {
-                spaceManager.setPackageEnabledShizuku(EssentialSpaceManager.PKG_ESSENTIAL_SPACE, true)
-                spaceManager.setPackageEnabledShizuku(EssentialSpaceManager.PKG_ESSENTIAL_RECORDER, true)
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        infoMessage = "Restored Essential Space & Recorder via Shizuku."
-                    )
-                }
-            } else {
-                _uiState.update {
-                    it.copy(
-                        isPerformingAction = false,
-                        showShizukuSetupDialog = true,
-                        infoMessage = "Please set up Shizuku to restore packages."
-                    )
-                }
-            }
-            refreshStatus()
-        }
-    }
-
-    fun onOpenShizukuSetup() {
-        _uiState.update { it.copy(showShizukuSetupDialog = true) }
-    }
-
-    fun onDismissShizukuSetup() {
-        _uiState.update { it.copy(showShizukuSetupDialog = false) }
-    }
-
-    fun onLaunchShizukuApp() {
+    fun onOpenPackageAppInfo(packageName: String) {
         try {
-            val intent = spaceManager.createOpenShizukuIntent()
-            if (intent != null) {
-                context.startActivity(intent)
-            } else {
-                onInstallShizuku()
-            }
-        } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not open Shizuku app.") }
-        }
-    }
-
-    fun onInstallShizuku() {
-        try {
-            val intent = spaceManager.createInstallShizukuIntent()
+            val intent = spaceManager.createOpenAppInfoIntent(packageName)
             context.startActivity(intent)
         } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not open Google Play Store.") }
+            _uiState.update { it.copy(errorMessage = "Could not open App Info for $packageName.") }
         }
-    }
-
-    fun onOpenDeveloperOptions() {
-        try {
-            val intent = spaceManager.createOpenDeveloperOptionsIntent()
-            context.startActivity(intent)
-        } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not open Developer Options.") }
-        }
-    }
-
-    fun onCopyAdbCommand(command: String) {
-        try {
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("ADB Command", command)
-            clipboard.setPrimaryClip(clip)
-            _uiState.update { it.copy(infoMessage = "ADB command copied to clipboard!") }
-        } catch (_: Exception) {
-            _uiState.update { it.copy(errorMessage = "Could not copy to clipboard.") }
-        }
-    }
-
-    fun onRequestShizukuPermission() {
-        spaceManager.requestShizukuPermission(1001)
     }
 
     fun clearMessages() {
         _uiState.update { it.copy(infoMessage = null, errorMessage = null) }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+            Shizuku.removeBinderReceivedListener(binderReceivedListener)
+            Shizuku.removeBinderDeadListener(binderDeadListener)
+        } catch (_: Throwable) {}
+    }
 }
-
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
