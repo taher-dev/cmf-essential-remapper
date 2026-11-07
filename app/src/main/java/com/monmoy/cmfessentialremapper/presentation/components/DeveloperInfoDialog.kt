@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -50,7 +49,7 @@ import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
 
 /**
- * Developer Info Dialog displaying developer attribution, bio, and GitHub link.
+ * Developer Info Dialog displaying developer attribution, bio, and clickable profile & portfolio links.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +61,15 @@ fun DeveloperInfoDialog(
     val openGithub = {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/taher-dev")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    val openPortfolio = {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://monmoy.pages.dev/")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
@@ -149,7 +157,7 @@ fun DeveloperInfoDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // About Me Description
                 Box(
@@ -169,55 +177,66 @@ fun DeveloperInfoDialog(
                     )
                 }
 
-                // Clickable GitHub Link Card
-                Row(
+                // Clickable Text Links: GitHub & Portfolio
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(NothingGrayDark)
-                        .border(1.dp, NothingSurfaceBorder, RoundedCornerShape(14.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, color = CmfRedAccent),
-                            onClick = openGithub
-                        )
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Code,
-                            contentDescription = "GitHub",
-                            tint = CmfRedAccent,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "GitHub:",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = NothingWhite
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "GitHub Profile",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = NothingWhite
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "https://github.com/taher-dev",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = NothingGrayLight
-                            )
-                        }
+                        Text(
+                            text = "github.com/taher-dev",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                textDecoration = TextDecoration.Underline
+                            ),
+                            color = NothingGrayLight,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = false, color = CmfRedAccent),
+                                    onClick = openGithub
+                                )
+                        )
                     }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                        contentDescription = "Open in browser",
-                        tint = NothingGrayLight,
-                        modifier = Modifier.size(16.dp)
-                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Portfolio:",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = NothingWhite
+                        )
+                        Text(
+                            text = "monmoy.pages.dev",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                textDecoration = TextDecoration.Underline
+                            ),
+                            color = NothingGrayLight,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = false, color = CmfRedAccent),
+                                    onClick = openPortfolio
+                                )
+                        )
+                    }
                 }
             }
 
