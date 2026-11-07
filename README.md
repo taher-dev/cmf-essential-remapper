@@ -19,6 +19,10 @@
 
 [**Download Latest APK**](https://github.com/taher-dev/cmf-essential-remapper/releases/latest) • [**Interactive Web Preview**](https://htmlpreview.github.io/?https://github.com/taher-dev/cmf-essential-remapper/blob/main/preview.html) • [**Privacy Policy**](PRIVACY_POLICY.md) • [**Report an Issue**](https://github.com/taher-dev/cmf-essential-remapper/issues)
 
+<br/><br/>
+
+<img src="assets/banner.jpg" alt="CMF Essential Remapper for CMF Phone 2 Pro" width="100%" />
+
 </div>
 
 ---
