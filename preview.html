@@ -252,6 +252,26 @@
             text-transform: uppercase;
         }
 
+        .developer-icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            color: var(--text-white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .developer-icon-btn:hover {
+            border-color: #555;
+            background-color: #262626;
+            color: var(--red-accent);
+        }
+
         .nothing-dot {
             width: 8px;
             height: 8px;
@@ -815,8 +835,16 @@
             <div class="screen-container">
                 <!-- Nothing Header -->
                 <div class="nothing-header">
-                    <span class="nothing-header-title">CMF Essential Remapper</span>
-                    <span class="nothing-dot"></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="nothing-dot"></span>
+                        <span class="nothing-header-title">CMF Essential Remapper</span>
+                    </div>
+                    <button class="developer-icon-btn" onclick="openDeveloperModal()" title="Developer Info">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </button>
                 </div>
 
                 <div class="spacer" style="height: 16px;"></div>
@@ -1060,6 +1088,59 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Developer Info Modal Dialog -->
+            <div id="developerModal" class="modal-overlay">
+                <div class="modal-dialog">
+                    <div class="modal-header">
+                        <h3>DEVELOPER // ABOUT</h3>
+                        <span class="nothing-dot"></span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 14px; margin: 14px 0 16px 0;">
+                        <div style="width: 46px; height: 46px; border-radius: 50%; background: #1C1C1C; border: 1px solid #333; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #FFF;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Taher Mahmud Monmoy</span>
+                            <span style="font-size: 11px; color: var(--text-gray-light);">Creator &amp; Maintainer</span>
+                        </div>
+                    </div>
+
+                    <div class="modal-list" style="gap: 10px;">
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">ℹ</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">CMF Essential Remapper</div>
+                                <div style="font-size: 11px; color: #AAA;">Version 1.0.0 (Open Source)</div>
+                            </div>
+                        </div>
+
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">⚡</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">Target Hardware</div>
+                                <div style="font-size: 11px; color: #AAA;">CMF Phone 1 &amp; CMF Phone 2 Pro (Nothing OS)</div>
+                            </div>
+                        </div>
+
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">🛡</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">Privacy Commitment</div>
+                                <div style="font-size: 11px; color: #AAA;">100% Offline • Zero Telemetry • Apache 2.0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn-cancel" onclick="closeDeveloperModal()">CLOSE</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1072,11 +1153,12 @@
             <button class="preview-btn primary" onclick="pressEssentialKey('long')">🔴 Long Press</button>
         </div>
 
-        <div class="btn-group-title">Configure Gestures:</div>
+        <div class="btn-group-title">Configure Gestures &amp; Info:</div>
         <div class="btn-row">
             <button class="preview-btn" onclick="openAssignDialog('single')">Map Single</button>
             <button class="preview-btn" onclick="openAssignDialog('double')">Map Double</button>
             <button class="preview-btn" onclick="openAssignDialog('long')">Map Long</button>
+            <button class="preview-btn" onclick="openDeveloperModal()">👤 Developer Info</button>
         </div>
     </div>
 
@@ -1299,6 +1381,14 @@
             document.getElementById('privacyModal').classList.remove('active');
         }
 
+        function openDeveloperModal() {
+            document.getElementById('developerModal').classList.add('active');
+        }
+
+        function closeDeveloperModal() {
+            document.getElementById('developerModal').classList.remove('active');
+        }
+
         // Close on outside click
         document.getElementById('assignModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -1309,6 +1399,12 @@
         document.getElementById('privacyModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closePrivacyModal();
+            }
+        });
+
+        document.getElementById('developerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeveloperModal();
             }
         });
     </script>
