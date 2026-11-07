@@ -26,8 +26,13 @@ data class EssentialSpaceStatus(
     val isShizukuPermissionGranted: Boolean
 ) {
     val areBothDisabled: Boolean
-        get() = (spacePackageStatus == PackageInstallStatus.DISABLED || spacePackageStatus == PackageInstallStatus.NOT_INSTALLED) &&
-                (recorderPackageStatus == PackageInstallStatus.DISABLED || recorderPackageStatus == PackageInstallStatus.NOT_INSTALLED)
+        get() {
+            val hasDisabled = spacePackageStatus == PackageInstallStatus.DISABLED ||
+                    recorderPackageStatus == PackageInstallStatus.DISABLED
+            val noneInstalled = spacePackageStatus == PackageInstallStatus.NOT_INSTALLED &&
+                    recorderPackageStatus == PackageInstallStatus.NOT_INSTALLED
+            return hasDisabled || (noneInstalled && isShizukuReady)
+        }
 
     val isTakeoverReady: Boolean
         get() = areBothDisabled
@@ -50,16 +55,17 @@ class EssentialSpaceManager(private val context: Context) {
 
     fun getPackageStatus(packageName: String): PackageInstallStatus {
         return try {
+            val flags = PackageManager.MATCH_DISABLED_COMPONENTS or PackageManager.MATCH_UNINSTALLED_PACKAGES
             val appInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 context.packageManager.getApplicationInfo(
                     packageName,
-                    PackageManager.ApplicationInfoFlags.of(PackageManager.MATCH_DISABLED_COMPONENTS.toLong())
+                    PackageManager.ApplicationInfoFlags.of(flags.toLong())
                 )
             } else {
                 @Suppress("DEPRECATION")
                 context.packageManager.getApplicationInfo(
                     packageName,
-                    PackageManager.MATCH_DISABLED_COMPONENTS
+                    flags
                 )
             }
 
