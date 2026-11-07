@@ -272,6 +272,21 @@
             color: var(--red-accent);
         }
 
+        .privacy-link {
+            font-size: 12px;
+            color: var(--text-gray-light);
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .privacy-link:hover {
+            color: var(--text-white);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
         .nothing-dot {
             width: 8px;
             height: 8px;
@@ -620,41 +635,6 @@
             background: rgba(215, 25, 33, 0.1);
         }
 
-        /* Bottom App Footer */
-        .app-footer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 18px 24px 28px 24px;
-            margin-top: auto;
-            gap: 6px;
-        }
-
-        .footer-privacy-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text-gray-light);
-            font-size: 13px;
-            font-weight: 500;
-            padding: 6px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .footer-privacy-btn:hover {
-            color: var(--text-white);
-            background: rgba(255, 255, 255, 0.06);
-        }
-
-        .footer-meta {
-            font-size: 11px;
-            color: var(--text-gray-medium);
-            letter-spacing: 0.3px;
-        }
-
         /* Controls Panel */
         .preview-controls {
             margin-top: 24px;
@@ -971,17 +951,11 @@
                     </div>
                 </div>
 
-                <div class="spacer" style="height: 36px;"></div>
+                <div class="spacer" style="height: 28px;"></div>
 
-                <!-- Bottom App Footer -->
-                <div class="app-footer">
-                    <div class="footer-privacy-btn" onclick="openPrivacyModal()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                        </svg>
-                        <span>Privacy Policy</span>
-                    </div>
-                    <div class="footer-meta">CMF Essential Remapper • v1.0.0</div>
+                <!-- Minimal Privacy Policy clickable text at the bottom -->
+                <div style="display: flex; justify-content: center; padding-bottom: 24px;">
+                    <span class="privacy-link" onclick="openPrivacyModal()">Privacy Policy</span>
                 </div>
             </div>
 
