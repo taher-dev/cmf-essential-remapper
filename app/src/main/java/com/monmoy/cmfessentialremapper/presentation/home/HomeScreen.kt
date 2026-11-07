@@ -42,7 +42,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -278,27 +280,28 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Minimal Privacy Policy clickable text at the bottom
+            // Small clickable Privacy Policy text at the bottom
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Privacy Policy",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        textDecoration = TextDecoration.Underline,
+                        letterSpacing = 0.5.sp
                     ),
                     color = NothingGrayLight,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(bounded = true, color = NothingGrayLight),
+                            indication = ripple(bounded = false, color = CmfRedAccent),
                             onClick = onOpenPrivacyPolicy
                         )
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 )
             }
         }
