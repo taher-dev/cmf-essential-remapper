@@ -620,6 +620,41 @@
             background: rgba(215, 25, 33, 0.1);
         }
 
+        /* Bottom App Footer */
+        .app-footer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px 24px 28px 24px;
+            margin-top: auto;
+            gap: 6px;
+        }
+
+        .footer-privacy-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-gray-light);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .footer-privacy-btn:hover {
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .footer-meta {
+            font-size: 11px;
+            color: var(--text-gray-medium);
+            letter-spacing: 0.3px;
+        }
+
         /* Controls Panel */
         .preview-controls {
             margin-top: 24px;
@@ -936,25 +971,17 @@
                     </div>
                 </div>
 
-                <div class="spacer"></div>
+                <div class="spacer" style="height: 36px;"></div>
 
-                <!-- Section Header: About -->
-                <div class="section-header">
-                    <span class="section-title">About</span>
-                    <span class="nothing-dot"></span>
-                </div>
-
-                <!-- Privacy Policy Card -->
-                <div class="card" onclick="openPrivacyModal()">
-                    <div class="card-row">
-                        <div class="card-row-left">
-                            <div class="card-text-col">
-                                <span class="card-title">Privacy Policy</span>
-                                <span class="card-subtext">100% Offline • Zero Telemetry • Open Source</span>
-                            </div>
-                        </div>
-                        <span class="chevron-icon">›</span>
+                <!-- Bottom App Footer -->
+                <div class="app-footer">
+                    <div class="footer-privacy-btn" onclick="openPrivacyModal()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Privacy Policy</span>
                     </div>
+                    <div class="footer-meta">CMF Essential Remapper • v1.0.0</div>
                 </div>
             </div>
 
@@ -1043,6 +1070,101 @@
 
                     <div class="modal-actions">
                         <button class="btn-cancel" onclick="closeAssignDialog()">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Privacy Policy Modal Dialog -->
+            <div id="privacyModal" class="modal-overlay">
+                <div class="modal-dialog">
+                    <div class="modal-header">
+                        <h3>PRIVACY POLICY</h3>
+                        <span class="nothing-dot"></span>
+                    </div>
+                    <div class="modal-subtitle">Open Source Commitment &amp; Transparency</div>
+
+                    <div class="modal-list" style="gap: 12px; max-height: 360px;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 2px;">1. Zero Internet Access (100% Offline)</div>
+                            <div style="font-size: 11px; color: #AAA; line-height: 1.4;">CMF Essential Remapper does not request or possess the 'android.permission.INTERNET' permission. It cannot transmit data off your device under any circumstances.</div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 2px;">2. No Data Collection or Telemetry</div>
+                            <div style="font-size: 11px; color: #AAA; line-height: 1.4;">Zero personal data, analytics, device identifiers, or crash reporting SDKs are included. No telemetry ever runs.</div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 2px;">3. Scoped Accessibility Service</div>
+                            <div style="font-size: 11px; color: #AAA; line-height: 1.4;">Operates strictly with 'canRetrieveWindowContent="false"'. It cannot read screen text, passwords, or personal messages. Only physical Essential Key hardware events are filtered.</div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 2px;">4. Local Preferences Storage</div>
+                            <div style="font-size: 11px; color: #AAA; line-height: 1.4;">All mappings and scan codes are stored strictly on-device using Jetpack DataStore and never synced to any cloud.</div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600; color: #FFF; margin-bottom: 2px;">5. Free &amp; Open Source Software</div>
+                            <div style="font-size: 11px; color: #AAA; line-height: 1.4;">Licensed under the Apache License 2.0. Complete source code is publicly auditable.</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn-cancel" onclick="closePrivacyModal()">DISMISS</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Developer Info Modal Dialog -->
+            <div id="developerModal" class="modal-overlay">
+                <div class="modal-dialog">
+                    <div class="modal-header">
+                        <h3>DEVELOPER // ABOUT</h3>
+                        <span class="nothing-dot"></span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 14px; margin: 14px 0 16px 0;">
+                        <div style="width: 46px; height: 46px; border-radius: 50%; background: #1C1C1C; border: 1px solid #333; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #FFF;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 15px; font-weight: 700; color: #FFF;">Taher Mahmud Monmoy</span>
+                            <span style="font-size: 11px; color: var(--text-gray-light);">Creator &amp; Maintainer</span>
+                        </div>
+                    </div>
+
+                    <div class="modal-list" style="gap: 10px;">
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">ℹ</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">CMF Essential Remapper</div>
+                                <div style="font-size: 11px; color: #AAA;">Version 1.0.0 (Open Source)</div>
+                            </div>
+                        </div>
+
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">⚡</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">Target Hardware</div>
+                                <div style="font-size: 11px; color: #AAA;">CMF Phone 1 &amp; CMF Phone 2 Pro (Nothing OS)</div>
+                            </div>
+                        </div>
+
+                        <div style="background: #181818; border: 1px solid #282828; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--red-accent); font-size: 16px;">🛡</span>
+                            <div>
+                                <div style="font-size: 13px; font-weight: 600; color: #FFF;">Privacy Commitment</div>
+                                <div style="font-size: 11px; color: #AAA;">100% Offline • Zero Telemetry • Apache 2.0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn-cancel" onclick="closeDeveloperModal()">CLOSE</button>
                     </div>
                 </div>
             </div>
@@ -1389,10 +1511,38 @@
             document.getElementById('developerModal').classList.remove('active');
         }
 
+        function openPrivacyModal() {
+            document.getElementById('privacyModal').classList.add('active');
+        }
+
+        function closePrivacyModal() {
+            document.getElementById('privacyModal').classList.remove('active');
+        }
+
+        function openDeveloperModal() {
+            document.getElementById('developerModal').classList.add('active');
+        }
+
+        function closeDeveloperModal() {
+            document.getElementById('developerModal').classList.remove('active');
+        }
+
         // Close on outside click
         document.getElementById('assignModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAssignDialog();
+            }
+        });
+
+        document.getElementById('privacyModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePrivacyModal();
+            }
+        });
+
+        document.getElementById('developerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeveloperModal();
             }
         });
 
