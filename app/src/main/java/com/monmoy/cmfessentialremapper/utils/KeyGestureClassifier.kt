@@ -27,8 +27,8 @@ enum class KeyGesture(val title: String) {
  */
 class KeyGestureClassifier(
     private val scope: CoroutineScope,
-    var doublePressWindowMs: Long = 180L,
-    var triplePressWindowMs: Long = 180L,
+    var doublePressWindowMs: Long = 200L,
+    var triplePressWindowMs: Long = 200L,
     var longPressThresholdMs: Long = 500L,
     private val onGestureRecognized: (KeyGesture) -> Unit
 ) {

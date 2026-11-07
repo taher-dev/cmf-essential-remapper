@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.monmoy.cmfessentialremapper.domain.model.KeyAction
+import com.monmoy.cmfessentialremapper.utils.KeyGesture
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -30,6 +32,9 @@ class DataStoreManager(private val context: Context) {
         val KEY_DOUBLE_PRESS_WINDOW_MS = longPreferencesKey("double_press_window_ms")
         val KEY_TRIPLE_PRESS_WINDOW_MS = longPreferencesKey("triple_press_window_ms")
         val KEY_LONG_PRESS_THRESHOLD_MS = longPreferencesKey("long_press_threshold_ms")
+        val KEY_SINGLE_PRESS_ACTION = stringPreferencesKey("single_press_action")
+        val KEY_DOUBLE_PRESS_ACTION = stringPreferencesKey("double_press_action")
+        val KEY_LONG_PRESS_ACTION = stringPreferencesKey("long_press_action")
     }
 
     private val preferencesFlow: Flow<Preferences> = context.dataStore.data
@@ -67,6 +72,29 @@ class DataStoreManager(private val context: Context) {
 
     val longPressThresholdMs: Flow<Long> = preferencesFlow.map { preferences ->
         preferences[PreferenceKeys.KEY_LONG_PRESS_THRESHOLD_MS] ?: 600L
+    }
+
+    val singlePressAction: Flow<KeyAction> = preferencesFlow.map { preferences ->
+        KeyAction.fromId(preferences[PreferenceKeys.KEY_SINGLE_PRESS_ACTION] ?: KeyAction.CYCLE_RINGER.id)
+    }
+
+    val doublePressAction: Flow<KeyAction> = preferencesFlow.map { preferences ->
+        KeyAction.fromId(preferences[PreferenceKeys.KEY_DOUBLE_PRESS_ACTION] ?: KeyAction.NONE.id)
+    }
+
+    val longPressAction: Flow<KeyAction> = preferencesFlow.map { preferences ->
+        KeyAction.fromId(preferences[PreferenceKeys.KEY_LONG_PRESS_ACTION] ?: KeyAction.NONE.id)
+    }
+
+    suspend fun setAction(gesture: KeyGesture, action: KeyAction) {
+        context.dataStore.edit { preferences ->
+            when (gesture) {
+                KeyGesture.SINGLE_PRESS -> preferences[PreferenceKeys.KEY_SINGLE_PRESS_ACTION] = action.id
+                KeyGesture.DOUBLE_PRESS -> preferences[PreferenceKeys.KEY_DOUBLE_PRESS_ACTION] = action.id
+                KeyGesture.LONG_PRESS -> preferences[PreferenceKeys.KEY_LONG_PRESS_ACTION] = action.id
+                KeyGesture.TRIPLE_PRESS -> {}
+            }
+        }
     }
 
     suspend fun saveLearnedKey(keyCode: Int, scanCode: Int) {

@@ -1,8 +1,8 @@
 package com.monmoy.cmfessentialremapper.presentation.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,57 +19,76 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
-import com.monmoy.cmfessentialremapper.domain.model.EssentialKeyStatus
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.monmoy.cmfessentialremapper.domain.model.KeyAction
 import com.monmoy.cmfessentialremapper.domain.model.RingerMode
-import com.monmoy.cmfessentialremapper.presentation.components.KeyStatusCard
-import com.monmoy.cmfessentialremapper.presentation.components.ModeIndicatorCard
+import com.monmoy.cmfessentialremapper.presentation.components.ActionSelectionDialog
+import com.monmoy.cmfessentialremapper.presentation.components.GestureActionCard
 import com.monmoy.cmfessentialremapper.presentation.components.NothingHeader
 import com.monmoy.cmfessentialremapper.presentation.components.SettingsDialog
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBackground
-import com.monmoy.cmfessentialremapper.presentation.theme.NothingBlack
-import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayDark
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayLight
-import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayMedium
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurface
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
+import com.monmoy.cmfessentialremapper.utils.KeyGesture
+
+private val SuccessGreen = Color(0xFF4CAF50)
 
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
-    onModeSelected: (RingerMode) -> Unit,
     onNavigateToSetup: () -> Unit,
-    onNavigateToKeyLearning: () -> Unit,
-    onNavigateToDiagnostics: () -> Unit,
+    onGestureClick: (KeyGesture) -> Unit,
+    onSelectAction: (KeyGesture, KeyAction) -> Unit,
+    onDismissActionSelector: () -> Unit,
+    onModeSelected: (RingerMode) -> Unit = {},
+    onNavigateToKeyLearning: () -> Unit = {},
+    onNavigateToDiagnostics: () -> Unit = {},
     onErrorMessageDismissed: () -> Unit,
     onSettingsClick: () -> Unit,
     onDismissSettingsDialog: () -> Unit,
+    onAppResumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onAppResumed()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
@@ -91,37 +110,9 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Top
         ) {
             // Header
-            NothingHeader(
-                onSettingsClick = onSettingsClick
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Direct Ringer Mode Selector (Silent, Vibrate, Ring)
-            ModeIndicatorCard(
-                currentMode = uiState.currentRingerMode,
-                isChangingMode = uiState.isChangingMode,
-                onModeSelected = onModeSelected
-            )
+            NothingHeader()
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Essential Key Hardware Status Card (Clickable to open Key Learning)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null,
-                        onClick = onNavigateToKeyLearning
-                    )
-            ) {
-                KeyStatusCard(
-                    status = uiState.keyStatus
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
 
             // Setup & Configuration Banner
             Card(
@@ -130,95 +121,91 @@ fun HomeScreen(
                     .padding(horizontal = 24.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, color = CmfRedAccent),
                         onClick = onNavigateToSetup
                     ),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = NothingSurface),
                 border = CardDefaults.outlinedCardBorder().copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(NothingSurfaceBorder)
+                    brush = SolidColor(NothingSurfaceBorder)
                 )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(7.dp)
+                                .size(8.dp)
                                 .clip(CircleShape)
-                                .background(if (uiState.isSetupComplete) CmfRedAccent else NothingGrayDark)
+                                .background(if (uiState.isSetupComplete) SuccessGreen else CmfRedAccent)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(14.dp))
                         Column {
                             Text(
                                 text = "Setup & Permissions",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = NothingWhite
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (uiState.isSetupComplete) "All services active" else "Configuration required",
+                                text = if (uiState.isSetupComplete) "All permissions granted" else "Configuration required",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.isSetupComplete) NothingGrayLight else CmfRedAccent
+                                color = if (uiState.isSetupComplete) SuccessGreen else NothingGrayLight
                             )
                         }
                     }
 
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = "Open Setup",
-                        tint = NothingGrayLight,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (uiState.isSetupComplete) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "All Permissions Granted",
+                            tint = SuccessGreen,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = "Open Setup",
+                            tint = NothingGrayLight,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Live Diagnostics Row Button
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = ripple(bounded = true, color = CmfRedAccent),
-                        onClick = onNavigateToDiagnostics
-                    ),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = NothingSurface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(NothingSurfaceBorder)
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Live Key Telemetry & Diagnostics",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NothingGrayLight
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = "Diagnostics",
-                        tint = NothingGrayDark,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+            // Key Actions Configuration Section
+            GestureActionCard(
+                singlePressAction = uiState.singlePressAction,
+                doublePressAction = uiState.doublePressAction,
+                longPressAction = uiState.longPressAction,
+                onGestureClick = onGestureClick
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        // Action Selection Dialog for Chosen Gesture
+        uiState.selectedGestureForDialog?.let { gesture ->
+            val currentAction = when (gesture) {
+                KeyGesture.SINGLE_PRESS -> uiState.singlePressAction
+                KeyGesture.DOUBLE_PRESS -> uiState.doublePressAction
+                KeyGesture.LONG_PRESS -> uiState.longPressAction
+                KeyGesture.TRIPLE_PRESS -> KeyAction.NONE
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            ActionSelectionDialog(
+                gesture = gesture,
+                currentAction = currentAction,
+                onSelectAction = { action -> onSelectAction(gesture, action) },
+                onDismissRequest = onDismissActionSelector
+            )
         }
 
         if (uiState.isSettingsDialogOpen) {

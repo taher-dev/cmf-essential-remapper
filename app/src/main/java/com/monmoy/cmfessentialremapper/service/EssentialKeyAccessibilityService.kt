@@ -3,15 +3,21 @@ package com.monmoy.cmfessentialremapper.service
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
-import android.os.SystemClock
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import com.monmoy.cmfessentialremapper.data.preferences.DataStoreManager
+import com.monmoy.cmfessentialremapper.data.repository.RingerModeRepository
 import com.monmoy.cmfessentialremapper.data.repository.RingerModeRepositoryImpl
+import com.monmoy.cmfessentialremapper.domain.model.KeyAction
+import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import com.monmoy.cmfessentialremapper.domain.usecase.CycleRingerModeUseCase
+import com.monmoy.cmfessentialremapper.domain.usecase.RingerCycleOrder
 import com.monmoy.cmfessentialremapper.utils.KeyGesture
 import com.monmoy.cmfessentialremapper.utils.KeyGestureClassifier
 import kotlinx.coroutines.CoroutineScope
@@ -41,26 +47,33 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var dataStoreManager: DataStoreManager
+    private lateinit var ringerRepository: RingerModeRepository
     private lateinit var cycleRingerModeUseCase: CycleRingerModeUseCase
     private var gestureClassifier: KeyGestureClassifier? = null
 
     private var targetKeyCode: Int = 0
     private var targetScanCode: Int = 250
     private var isHapticFeedbackEnabled: Boolean = true
-    private var lastKeyActionTime: Long = 0L
-    private val debounceThresholdMs: Long = 350L
+
+    private var singlePressAction: KeyAction = KeyAction.CYCLE_RINGER
+    private var doublePressAction: KeyAction = KeyAction.NONE
+    private var longPressAction: KeyAction = KeyAction.NONE
+
+    private var isTorchOn: Boolean = false
+    private var torchCameraId: String? = null
 
     override fun onCreate() {
         super.onCreate()
         dataStoreManager = DataStoreManager(applicationContext)
-        val repository = RingerModeRepositoryImpl(applicationContext, dataStoreManager)
-        cycleRingerModeUseCase = CycleRingerModeUseCase(repository)
+        ringerRepository = RingerModeRepositoryImpl(applicationContext, dataStoreManager)
+        cycleRingerModeUseCase = CycleRingerModeUseCase(ringerRepository)
 
         gestureClassifier = KeyGestureClassifier(
             scope = serviceScope,
             onGestureRecognized = ::handleGestureRecognized
         )
 
+        initCameraManager()
         observeSettings()
     }
 
@@ -96,6 +109,21 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
             launch {
                 dataStoreManager.isHapticFeedbackEnabled.collect { enabled ->
                     isHapticFeedbackEnabled = enabled
+                }
+            }
+            launch {
+                dataStoreManager.singlePressAction.collect { action ->
+                    singlePressAction = action
+                }
+            }
+            launch {
+                dataStoreManager.doublePressAction.collect { action ->
+                    doublePressAction = action
+                }
+            }
+            launch {
+                dataStoreManager.longPressAction.collect { action ->
+                    longPressAction = action
                 }
             }
         }
@@ -138,28 +166,9 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
             return false
         }
 
-        // Essential Key matched: ALWAYS consume both DOWN and UP so it never leaks to the system or window!
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            if (event.repeatCount > 0) return true
-
-            val now = SystemClock.uptimeMillis()
-            if (now - lastKeyActionTime >= debounceThresholdMs) {
-                lastKeyActionTime = now
-                _lastRecognizedGesture.value = KeyGesture.SINGLE_PRESS
-                performHapticFeedback()
-                serviceScope.launch {
-                    val result = cycleRingerModeUseCase()
-                    result.fold(
-                        onSuccess = { newMode ->
-                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
-                        },
-                        onFailure = { error ->
-                            _lastActionResult.value = "Error: ${error.localizedMessage}"
-                        }
-                    )
-                }
-            }
-        }
+        // Feed matching key event into gesture state machine
+        gestureClassifier?.processKeyEvent(event)
+        // Consume both DOWN and UP so the key never leaks to Nothing OS or active apps
         return true
     }
 
@@ -177,12 +186,27 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
 
     private fun handleGestureRecognized(gesture: KeyGesture) {
         _lastRecognizedGesture.value = gesture
+        val action = when (gesture) {
+            KeyGesture.SINGLE_PRESS -> singlePressAction
+            KeyGesture.DOUBLE_PRESS -> doublePressAction
+            KeyGesture.LONG_PRESS -> longPressAction
+            KeyGesture.TRIPLE_PRESS -> KeyAction.NONE
+        }
 
-        when (gesture) {
-            KeyGesture.SINGLE_PRESS -> {
-                performHapticFeedback()
-                serviceScope.launch {
-                    val result = cycleRingerModeUseCase()
+        if (action == KeyAction.NONE) {
+            _lastActionResult.value = "No action assigned for ${gesture.title}"
+            return
+        }
+
+        performHapticFeedback()
+        executeAction(action)
+    }
+
+    private fun executeAction(action: KeyAction) {
+        serviceScope.launch {
+            when (action) {
+                KeyAction.CYCLE_RINGER -> {
+                    val result = cycleRingerModeUseCase(RingerCycleOrder.RING_VIBRATE_SILENT)
                     result.fold(
                         onSuccess = { newMode ->
                             _lastActionResult.value = "Cycled to ${newMode.displayName}"
@@ -192,12 +216,8 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                         }
                     )
                 }
-            }
-            KeyGesture.DOUBLE_PRESS -> {
-                performHapticFeedback()
-                serviceScope.launch {
-                    cycleRingerModeUseCase()
-                    val result = cycleRingerModeUseCase()
+                KeyAction.CYCLE_RINGER_2 -> {
+                    val result = cycleRingerModeUseCase(RingerCycleOrder.RING_SILENT_VIBRATE)
                     result.fold(
                         onSuccess = { newMode ->
                             _lastActionResult.value = "Cycled to ${newMode.displayName}"
@@ -207,37 +227,69 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                         }
                     )
                 }
-            }
-            KeyGesture.TRIPLE_PRESS -> {
-                performHapticFeedback()
-                serviceScope.launch {
-                    cycleRingerModeUseCase()
-                    cycleRingerModeUseCase()
-                    val result = cycleRingerModeUseCase()
-                    result.fold(
-                        onSuccess = { newMode ->
-                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
-                        },
-                        onFailure = { error ->
-                            _lastActionResult.value = "Error: ${error.localizedMessage}"
-                        }
-                    )
+                KeyAction.TOGGLE_FLASHLIGHT -> {
+                    toggleFlashlight()
                 }
-            }
-            KeyGesture.LONG_PRESS -> {
-                performHapticFeedback()
-                serviceScope.launch {
-                    val result = cycleRingerModeUseCase()
-                    result.fold(
-                        onSuccess = { newMode ->
-                            _lastActionResult.value = "Cycled to ${newMode.displayName}"
-                        },
-                        onFailure = { error ->
-                            _lastActionResult.value = "Error: ${error.localizedMessage}"
-                        }
-                    )
+                KeyAction.TAKE_SCREENSHOT -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+                        _lastActionResult.value = "Screenshot captured"
+                    } else {
+                        _lastActionResult.value = "Screenshot requires Android 9+"
+                    }
                 }
+                KeyAction.OPEN_NOTIFICATIONS -> {
+                    performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+                    _lastActionResult.value = "Notifications opened"
+                }
+                KeyAction.OPEN_QUICK_SETTINGS -> {
+                    performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+                    _lastActionResult.value = "Quick Settings opened"
+                }
+                KeyAction.LOCK_SCREEN -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+                        _lastActionResult.value = "Screen locked"
+                    } else {
+                        _lastActionResult.value = "Lock Screen requires Android 9+"
+                    }
+                }
+                KeyAction.NONE -> {}
             }
+        }
+    }
+
+    private fun initCameraManager() {
+        try {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
+            torchCameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                val chars = cameraManager.getCameraCharacteristics(id)
+                chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: cameraManager.cameraIdList.firstOrNull()
+
+            cameraManager.registerTorchCallback(object : CameraManager.TorchCallback() {
+                override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+                    if (cameraId == torchCameraId) {
+                        isTorchOn = enabled
+                    }
+                }
+            }, null)
+        } catch (_: Throwable) {}
+    }
+
+    private fun toggleFlashlight() {
+        try {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+            val id = torchCameraId ?: cameraManager?.cameraIdList?.firstOrNull()
+            if (id == null) {
+                _lastActionResult.value = "Flashlight unavailable"
+                return
+            }
+            isTorchOn = !isTorchOn
+            cameraManager?.setTorchMode(id, isTorchOn)
+            _lastActionResult.value = if (isTorchOn) "Flashlight ON" else "Flashlight OFF"
+        } catch (e: Exception) {
+            _lastActionResult.value = "Flashlight error: ${e.localizedMessage}"
         }
     }
 

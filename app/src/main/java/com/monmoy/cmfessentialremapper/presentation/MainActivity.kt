@@ -48,13 +48,17 @@ class MainActivity : ComponentActivity() {
 
                         HomeScreen(
                             uiState = uiState,
-                            onModeSelected = homeViewModel::onSelectRingerMode,
                             onNavigateToSetup = { currentScreen = AppScreen.SETUP },
+                            onGestureClick = homeViewModel::onOpenActionSelector,
+                            onSelectAction = homeViewModel::onSelectAction,
+                            onDismissActionSelector = homeViewModel::onDismissActionSelector,
+                            onModeSelected = homeViewModel::onSelectRingerMode,
                             onNavigateToKeyLearning = { currentScreen = AppScreen.KEY_LEARNING },
                             onNavigateToDiagnostics = { currentScreen = AppScreen.DIAGNOSTICS },
                             onErrorMessageDismissed = homeViewModel::onErrorMessageDismissed,
                             onSettingsClick = homeViewModel::onSettingsClicked,
-                            onDismissSettingsDialog = homeViewModel::onDismissSettingsDialog
+                            onDismissSettingsDialog = homeViewModel::onDismissSettingsDialog,
+                            onAppResumed = homeViewModel::onAppResumed
                         )
                     }
 

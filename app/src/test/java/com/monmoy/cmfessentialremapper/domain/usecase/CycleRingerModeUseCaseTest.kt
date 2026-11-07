@@ -58,6 +58,33 @@ class CycleRingerModeUseCaseTest {
     }
 
     @Test
+    fun testCycleMode2SequenceRingSilentVibrateRing() = runBlocking {
+        val fakeRepo = FakeRingerModeRepository(initialMode = RingerMode.RING)
+        val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
+
+        // 1st cycle: RING -> SILENT
+        assertEquals(RingerMode.SILENT, cycleUseCase(RingerCycleOrder.RING_SILENT_VIBRATE).getOrNull())
+        // 2nd cycle: SILENT -> VIBRATE
+        assertEquals(RingerMode.VIBRATE, cycleUseCase(RingerCycleOrder.RING_SILENT_VIBRATE).getOrNull())
+        // 3rd cycle: VIBRATE -> RING
+        assertEquals(RingerMode.RING, cycleUseCase(RingerCycleOrder.RING_SILENT_VIBRATE).getOrNull())
+    }
+
+    @Test
+    fun testCycleMode2SkipsSilentWhenNotificationPolicyMissing() = runBlocking {
+        val fakeRepo = FakeRingerModeRepository(
+            initialMode = RingerMode.RING,
+            hasNotificationPolicyAccessGranted = false
+        )
+        val cycleUseCase = CycleRingerModeUseCase(fakeRepo)
+
+        // When missing DND policy access, RING falls back to VIBRATE instead of SILENT
+        val result = cycleUseCase(RingerCycleOrder.RING_SILENT_VIBRATE)
+        assertTrue(result.isSuccess)
+        assertEquals(RingerMode.VIBRATE, result.getOrNull())
+    }
+
+    @Test
     fun testCycleSkipsSilentWhenNotificationPolicyMissing() = runBlocking {
         val fakeRepo = FakeRingerModeRepository(
             initialMode = RingerMode.VIBRATE,

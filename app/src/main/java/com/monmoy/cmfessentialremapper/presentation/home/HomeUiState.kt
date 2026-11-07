@@ -1,7 +1,9 @@
 package com.monmoy.cmfessentialremapper.presentation.home
 
 import com.monmoy.cmfessentialremapper.domain.model.EssentialKeyStatus
+import com.monmoy.cmfessentialremapper.domain.model.KeyAction
 import com.monmoy.cmfessentialremapper.domain.model.RingerMode
+import com.monmoy.cmfessentialremapper.utils.KeyGesture
 
 /**
  * Immutable UI State for the Home screen.
@@ -12,5 +14,9 @@ data class HomeUiState(
     val isSetupComplete: Boolean = false,
     val isChangingMode: Boolean = false,
     val isSettingsDialogOpen: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val singlePressAction: KeyAction = KeyAction.CYCLE_RINGER,
+    val doublePressAction: KeyAction = KeyAction.NONE,
+    val longPressAction: KeyAction = KeyAction.NONE,
+    val selectedGestureForDialog: KeyGesture? = null
 )
