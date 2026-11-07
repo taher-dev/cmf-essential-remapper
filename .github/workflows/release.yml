@@ -13,10 +13,14 @@ jobs:
   release:
     name: Build & Publish Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,17 +33,18 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Build Official Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Prepare Release Assets
         run: |
           mkdir -p release-assets
-          cp app/build/outputs/apk/debug/app-debug.apk release-assets/CMF-Essential-Remapper-${{ github.ref_name }}.apk
+          cp app/build/outputs/apk/release/app-release.apk release-assets/CMF-Essential-Remapper-${{ github.ref_name }}.apk
           cd release-assets
           sha256sum CMF-Essential-Remapper-${{ github.ref_name }}.apk > CMF-Essential-Remapper-${{ github.ref_name }}.apk.sha256
+          cat CMF-Essential-Remapper-${{ github.ref_name }}.apk.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

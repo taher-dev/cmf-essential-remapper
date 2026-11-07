@@ -7,7 +7,6 @@ plugins {
 android {
     namespace = "com.monmoy.cmfessentialremapper"
     compileSdk = 35
-    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "com.monmoy.cmfessentialremapper"
@@ -22,6 +21,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

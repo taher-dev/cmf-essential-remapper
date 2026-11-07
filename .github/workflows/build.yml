@@ -31,16 +31,27 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Build Debug & Release APK
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
 
-      - name: Compute Checksum
+      - name: Compute Checksums
         run: |
-          cd app/build/outputs/apk/debug
+          cd app/build/outputs/apk/release
+          sha256sum app-release.apk > app-release.apk.sha256
+          echo "Release SHA256: $(cat app-release.apk.sha256)"
+          cd ../debug
           sha256sum app-debug.apk > app-debug.apk.sha256
-          echo "SHA256: $(cat app-debug.apk.sha256)"
+          echo "Debug SHA256: $(cat app-debug.apk.sha256)"
+
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CMF-Essential-Remapper-Release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
