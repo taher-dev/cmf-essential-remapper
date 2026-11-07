@@ -23,9 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,8 +50,7 @@ import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
 
 /**
- * Developer Info Dialog displaying author attribution, bio, GitHub link,
- * open-source project info, and device architecture details.
+ * Developer Info Dialog displaying developer attribution, bio, and GitHub link.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +109,7 @@ fun DeveloperInfoDialog(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(NothingGrayDark)
                         .border(1.dp, NothingSurfaceBorder, CircleShape),
@@ -123,7 +119,7 @@ fun DeveloperInfoDialog(
                         imageVector = Icons.Outlined.Person,
                         contentDescription = "Developer",
                         tint = NothingWhite,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -223,24 +219,6 @@ fun DeveloperInfoDialog(
                         modifier = Modifier.size(16.dp)
                     )
                 }
-
-                DeveloperInfoItem(
-                    icon = Icons.Outlined.Info,
-                    title = "CMF Essential Remapper",
-                    description = "Version 1.0.0 (Open Source)"
-                )
-
-                DeveloperInfoItem(
-                    icon = Icons.Outlined.Code,
-                    title = "Target Hardware",
-                    description = "CMF Phone 1 & CMF Phone 2 Pro (Nothing OS)"
-                )
-
-                DeveloperInfoItem(
-                    icon = Icons.Outlined.Security,
-                    title = "Privacy Commitment",
-                    description = "100% Offline • Zero Telemetry • Apache 2.0"
-                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -266,47 +244,6 @@ fun DeveloperInfoDialog(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DeveloperInfoItem(
-    icon: ImageVector,
-    title: String,
-    description: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(NothingGrayDark)
-            .border(1.dp, NothingSurfaceBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = CmfRedAccent,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = NothingWhite
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = description,
-                style = MaterialTheme.typography.labelSmall,
-                color = NothingGrayLight
-            )
         }
     }
 }
