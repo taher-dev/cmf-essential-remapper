@@ -161,7 +161,7 @@ fun DeveloperInfoDialog(
                         .padding(14.dp)
                 ) {
                     Text(
-                        text = "Passionate Android & software developer crafting minimalist, open-source utilities and hardware-focused tools tailored for Nothing OS and CMF devices.",
+                        text = "Just a developer based in Bangladesh who likes building cool stuff, tweaking hardware, and making lightweight tools that make tech feel a little better.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             lineHeight = 18.sp
                         ),
