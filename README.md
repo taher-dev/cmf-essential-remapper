@@ -1,5 +1,11 @@
 <div align="center">
 
+<svg width="84" height="84" viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="108" height="108" rx="28" fill="#121212" stroke="#282828" stroke-width="2"/>
+  <circle cx="54" cy="54" r="28" stroke="#FFFFFF" stroke-width="3"/>
+  <rect x="48" y="40" width="12" height="28" rx="6" fill="#D71921"/>
+</svg>
+
 # CMF Essential Remapper
 
 **Give your CMF Essential Key the powers it was meant to have.**
