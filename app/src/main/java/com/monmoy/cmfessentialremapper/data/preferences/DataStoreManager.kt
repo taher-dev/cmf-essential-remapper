@@ -35,6 +35,7 @@ class DataStoreManager(private val context: Context) {
         val KEY_SINGLE_PRESS_ACTION = stringPreferencesKey("single_press_action")
         val KEY_DOUBLE_PRESS_ACTION = stringPreferencesKey("double_press_action")
         val KEY_LONG_PRESS_ACTION = stringPreferencesKey("long_press_action")
+        val KEY_VISUAL_OVERLAY_ENABLED = booleanPreferencesKey("visual_overlay_enabled")
     }
 
     private val preferencesFlow: Flow<Preferences> = context.dataStore.data
@@ -84,6 +85,16 @@ class DataStoreManager(private val context: Context) {
 
     val longPressAction: Flow<KeyAction> = preferencesFlow.map { preferences ->
         KeyAction.fromId(preferences[PreferenceKeys.KEY_LONG_PRESS_ACTION] ?: KeyAction.NONE.id)
+    }
+
+    val isVisualOverlayEnabled: Flow<Boolean> = preferencesFlow.map { preferences ->
+        preferences[PreferenceKeys.KEY_VISUAL_OVERLAY_ENABLED] ?: true
+    }
+
+    suspend fun setVisualOverlayEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferenceKeys.KEY_VISUAL_OVERLAY_ENABLED] = enabled
+        }
     }
 
     suspend fun setAction(gesture: KeyGesture, action: KeyAction) {

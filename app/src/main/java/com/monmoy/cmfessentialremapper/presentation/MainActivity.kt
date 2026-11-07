@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                             onGestureClick = homeViewModel::onOpenActionSelector,
                             onSelectAction = homeViewModel::onSelectAction,
                             onDismissActionSelector = homeViewModel::onDismissActionSelector,
+                            onToggleVisualOverlay = homeViewModel::onToggleVisualOverlay,
                             onModeSelected = homeViewModel::onSelectRingerMode,
                             onNavigateToKeyLearning = { currentScreen = AppScreen.KEY_LEARNING },
                             onNavigateToDiagnostics = { currentScreen = AppScreen.DIAGNOSTICS },

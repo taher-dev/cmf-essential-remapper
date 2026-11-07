@@ -80,6 +80,17 @@ class HomeViewModel(
                     _uiState.update { it.copy(longPressAction = action) }
                 }
             }
+            launch {
+                dataStoreManager.isVisualOverlayEnabled.collect { enabled ->
+                    _uiState.update { it.copy(isVisualOverlayEnabled = enabled) }
+                }
+            }
+        }
+    }
+
+    fun onToggleVisualOverlay(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStoreManager.setVisualOverlayEnabled(enabled)
         }
     }
 

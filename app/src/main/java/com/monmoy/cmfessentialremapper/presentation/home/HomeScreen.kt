@@ -28,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -52,6 +55,7 @@ import com.monmoy.cmfessentialremapper.presentation.components.SettingsDialog
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBackground
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayLight
+import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayMedium
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurface
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingSurfaceBorder
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingWhite
@@ -66,6 +70,7 @@ fun HomeScreen(
     onGestureClick: (KeyGesture) -> Unit,
     onSelectAction: (KeyGesture, KeyAction) -> Unit,
     onDismissActionSelector: () -> Unit,
+    onToggleVisualOverlay: (Boolean) -> Unit = {},
     onModeSelected: (RingerMode) -> Unit = {},
     onNavigateToKeyLearning: () -> Unit = {},
     onNavigateToDiagnostics: () -> Unit = {},
@@ -188,6 +193,83 @@ fun HomeScreen(
                 longPressAction = uiState.longPressAction,
                 onGestureClick = onGestureClick
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Display & Overlay Preferences
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Display",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = NothingWhite
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(CmfRedAccent)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = NothingSurface),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = SolidColor(NothingSurfaceBorder)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Visual State Overlay",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = NothingWhite
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Show sleek HUD pill when Essential Key is pressed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NothingGrayLight
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Switch(
+                            checked = uiState.isVisualOverlayEnabled,
+                            onCheckedChange = onToggleVisualOverlay,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = NothingWhite,
+                                checkedTrackColor = CmfRedAccent,
+                                uncheckedThumbColor = NothingGrayMedium,
+                                uncheckedTrackColor = NothingSurfaceBorder
+                            )
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
         }

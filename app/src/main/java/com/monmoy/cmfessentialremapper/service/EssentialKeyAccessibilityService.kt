@@ -18,6 +18,9 @@ import com.monmoy.cmfessentialremapper.domain.model.KeyAction
 import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import com.monmoy.cmfessentialremapper.domain.usecase.CycleRingerModeUseCase
 import com.monmoy.cmfessentialremapper.domain.usecase.RingerCycleOrder
+import com.monmoy.cmfessentialremapper.presentation.overlay.OverlayIcon
+import com.monmoy.cmfessentialremapper.presentation.overlay.OverlayState
+import com.monmoy.cmfessentialremapper.presentation.overlay.StateOverlayManager
 import com.monmoy.cmfessentialremapper.utils.KeyGesture
 import com.monmoy.cmfessentialremapper.utils.KeyGestureClassifier
 import kotlinx.coroutines.CoroutineScope
@@ -62,11 +65,15 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
     private var isTorchOn: Boolean = false
     private var torchCameraId: String? = null
 
+    private lateinit var stateOverlayManager: StateOverlayManager
+    private var isVisualOverlayEnabled: Boolean = true
+
     override fun onCreate() {
         super.onCreate()
         dataStoreManager = DataStoreManager(applicationContext)
         ringerRepository = RingerModeRepositoryImpl(applicationContext, dataStoreManager)
         cycleRingerModeUseCase = CycleRingerModeUseCase(ringerRepository)
+        stateOverlayManager = StateOverlayManager(this)
 
         gestureClassifier = KeyGestureClassifier(
             scope = serviceScope,
@@ -124,6 +131,11 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
             launch {
                 dataStoreManager.longPressAction.collect { action ->
                     longPressAction = action
+                }
+            }
+            launch {
+                dataStoreManager.isVisualOverlayEnabled.collect { enabled ->
+                    isVisualOverlayEnabled = enabled
                 }
             }
         }
@@ -210,6 +222,7 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                     result.fold(
                         onSuccess = { newMode ->
                             _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                            showOverlayForRingerMode(newMode)
                         },
                         onFailure = { error ->
                             _lastActionResult.value = "Error: ${error.localizedMessage}"
@@ -221,6 +234,7 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                     result.fold(
                         onSuccess = { newMode ->
                             _lastActionResult.value = "Cycled to ${newMode.displayName}"
+                            showOverlayForRingerMode(newMode)
                         },
                         onFailure = { error ->
                             _lastActionResult.value = "Error: ${error.localizedMessage}"
@@ -229,11 +243,31 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                 }
                 KeyAction.TOGGLE_FLASHLIGHT -> {
                     toggleFlashlight()
+                    if (isVisualOverlayEnabled) {
+                        stateOverlayManager.show(
+                            OverlayState(
+                                title = if (isTorchOn) "TORCH ON" else "TORCH OFF",
+                                subtitle = if (isTorchOn) "Flashlight active" else "Flashlight inactive",
+                                icon = if (isTorchOn) OverlayIcon.FLASHLIGHT_ON else OverlayIcon.FLASHLIGHT_OFF,
+                                accentColor = if (isTorchOn) 0xFFFFA000.toInt() else 0xFF888888.toInt()
+                            )
+                        )
+                    }
                 }
                 KeyAction.TAKE_SCREENSHOT -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
                         _lastActionResult.value = "Screenshot captured"
+                        if (isVisualOverlayEnabled) {
+                            stateOverlayManager.show(
+                                OverlayState(
+                                    title = "SCREENSHOT",
+                                    subtitle = "Captured",
+                                    icon = OverlayIcon.SCREENSHOT,
+                                    accentColor = 0xFFEEEEEE.toInt()
+                                )
+                            )
+                        }
                     } else {
                         _lastActionResult.value = "Screenshot requires Android 9+"
                     }
@@ -241,15 +275,45 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                 KeyAction.OPEN_NOTIFICATIONS -> {
                     performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
                     _lastActionResult.value = "Notifications opened"
+                    if (isVisualOverlayEnabled) {
+                        stateOverlayManager.show(
+                            OverlayState(
+                                title = "NOTIFICATIONS",
+                                subtitle = "Expanded",
+                                icon = OverlayIcon.NOTIFICATIONS,
+                                accentColor = 0xFFEEEEEE.toInt()
+                            )
+                        )
+                    }
                 }
                 KeyAction.OPEN_QUICK_SETTINGS -> {
                     performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
                     _lastActionResult.value = "Quick Settings opened"
+                    if (isVisualOverlayEnabled) {
+                        stateOverlayManager.show(
+                            OverlayState(
+                                title = "QUICK SETTINGS",
+                                subtitle = "Expanded",
+                                icon = OverlayIcon.QUICK_SETTINGS,
+                                accentColor = 0xFFEEEEEE.toInt()
+                            )
+                        )
+                    }
                 }
                 KeyAction.LOCK_SCREEN -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
                         _lastActionResult.value = "Screen locked"
+                        if (isVisualOverlayEnabled) {
+                            stateOverlayManager.show(
+                                OverlayState(
+                                    title = "SCREEN LOCKED",
+                                    subtitle = null,
+                                    icon = OverlayIcon.LOCK,
+                                    accentColor = 0xFFD71921.toInt()
+                                )
+                            )
+                        }
                     } else {
                         _lastActionResult.value = "Lock Screen requires Android 9+"
                     }
@@ -257,6 +321,31 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                 KeyAction.NONE -> {}
             }
         }
+    }
+
+    private fun showOverlayForRingerMode(mode: RingerMode) {
+        if (!isVisualOverlayEnabled) return
+        val state = when (mode) {
+            RingerMode.RING -> OverlayState(
+                title = "RING",
+                subtitle = "Calls & alerts ring",
+                icon = OverlayIcon.RING,
+                accentColor = 0xFFEEEEEE.toInt()
+            )
+            RingerMode.VIBRATE -> OverlayState(
+                title = "VIBRATE",
+                subtitle = "Calls & alerts vibrate",
+                icon = OverlayIcon.VIBRATE,
+                accentColor = 0xFFCCCCCC.toInt()
+            )
+            RingerMode.SILENT -> OverlayState(
+                title = "SILENT",
+                subtitle = "Muted",
+                icon = OverlayIcon.SILENT,
+                accentColor = 0xFFD71921.toInt() // Nothing Red
+            )
+        }
+        stateOverlayManager.show(state)
     }
 
     private fun initCameraManager() {
@@ -321,6 +410,7 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         _isServiceRunning.value = false
+        stateOverlayManager.destroy()
         gestureClassifier?.reset()
         serviceScope.cancel()
         super.onDestroy()

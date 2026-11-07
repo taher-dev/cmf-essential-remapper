@@ -18,5 +18,6 @@ data class HomeUiState(
     val singlePressAction: KeyAction = KeyAction.CYCLE_RINGER,
     val doublePressAction: KeyAction = KeyAction.NONE,
     val longPressAction: KeyAction = KeyAction.NONE,
+    val isVisualOverlayEnabled: Boolean = true,
     val selectedGestureForDialog: KeyGesture? = null
 )
