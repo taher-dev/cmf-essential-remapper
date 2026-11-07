@@ -29,11 +29,7 @@ enum class OverlayIcon {
     VIBRATE,
     SILENT,
     FLASHLIGHT_ON,
-    FLASHLIGHT_OFF,
-    SCREENSHOT,
-    NOTIFICATIONS,
-    QUICK_SETTINGS,
-    LOCK
+    FLASHLIGHT_OFF
 }
 
 /**
@@ -250,10 +246,6 @@ class StateOverlayManager(private val context: Context) {
             OverlayIcon.SILENT -> R.drawable.ic_overlay_silent
             OverlayIcon.FLASHLIGHT_ON -> R.drawable.ic_overlay_flashlight
             OverlayIcon.FLASHLIGHT_OFF -> R.drawable.ic_overlay_flashlight
-            OverlayIcon.SCREENSHOT -> R.drawable.ic_overlay_screenshot
-            OverlayIcon.NOTIFICATIONS -> R.drawable.ic_overlay_notifications
-            OverlayIcon.QUICK_SETTINGS -> R.drawable.ic_overlay_quick_settings
-            OverlayIcon.LOCK -> R.drawable.ic_overlay_lock
         }
 
         val drawable = ContextCompat.getDrawable(context, drawableRes)?.mutate()
@@ -277,3 +269,4 @@ class StateOverlayManager(private val context: Context) {
 
     private fun dpToPx(dp: Float): Float = dp * density
 }
+

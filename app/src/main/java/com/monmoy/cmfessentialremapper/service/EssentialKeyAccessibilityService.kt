@@ -258,16 +258,6 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
                         _lastActionResult.value = "Screenshot captured"
-                        if (isVisualOverlayEnabled) {
-                            stateOverlayManager.show(
-                                OverlayState(
-                                    title = "SCREENSHOT",
-                                    subtitle = "Captured",
-                                    icon = OverlayIcon.SCREENSHOT,
-                                    accentColor = 0xFFEEEEEE.toInt()
-                                )
-                            )
-                        }
                     } else {
                         _lastActionResult.value = "Screenshot requires Android 9+"
                     }
@@ -275,45 +265,15 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                 KeyAction.OPEN_NOTIFICATIONS -> {
                     performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
                     _lastActionResult.value = "Notifications opened"
-                    if (isVisualOverlayEnabled) {
-                        stateOverlayManager.show(
-                            OverlayState(
-                                title = "NOTIFICATIONS",
-                                subtitle = "Expanded",
-                                icon = OverlayIcon.NOTIFICATIONS,
-                                accentColor = 0xFFEEEEEE.toInt()
-                            )
-                        )
-                    }
                 }
                 KeyAction.OPEN_QUICK_SETTINGS -> {
                     performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
                     _lastActionResult.value = "Quick Settings opened"
-                    if (isVisualOverlayEnabled) {
-                        stateOverlayManager.show(
-                            OverlayState(
-                                title = "QUICK SETTINGS",
-                                subtitle = "Expanded",
-                                icon = OverlayIcon.QUICK_SETTINGS,
-                                accentColor = 0xFFEEEEEE.toInt()
-                            )
-                        )
-                    }
                 }
                 KeyAction.LOCK_SCREEN -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
                         _lastActionResult.value = "Screen locked"
-                        if (isVisualOverlayEnabled) {
-                            stateOverlayManager.show(
-                                OverlayState(
-                                    title = "SCREEN LOCKED",
-                                    subtitle = null,
-                                    icon = OverlayIcon.LOCK,
-                                    accentColor = 0xFFD71921.toInt()
-                                )
-                            )
-                        }
                     } else {
                         _lastActionResult.value = "Lock Screen requires Android 9+"
                     }
