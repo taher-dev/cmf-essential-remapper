@@ -57,19 +57,23 @@ fun NothingHeader(
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 fontSize = 21.sp,
-                letterSpacing = (-0.3).sp
+                letterSpacing = (-0.3).sp,
+                lineHeight = 24.sp
             ),
             color = NothingWhite,
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .align(Alignment.CenterVertically)
         )
 
         if (onDeveloperClick != null) {
+            Spacer(modifier = Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(22.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(NothingSurface)
                     .border(1.dp, NothingSurfaceBorder, CircleShape)
@@ -77,14 +81,15 @@ fun NothingHeader(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(bounded = true, color = CmfRedAccent),
                         onClick = onDeveloperClick
-                    ),
+                    )
+                    .align(Alignment.CenterVertically),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Person,
                     contentDescription = "Developer Info",
                     tint = NothingWhite,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
