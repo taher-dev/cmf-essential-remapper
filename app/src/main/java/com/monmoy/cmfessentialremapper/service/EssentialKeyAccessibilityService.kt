@@ -11,6 +11,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import com.monmoy.cmfessentialremapper.data.preferences.DataStoreManager
 import com.monmoy.cmfessentialremapper.data.repository.RingerModeRepository
 import com.monmoy.cmfessentialremapper.data.repository.RingerModeRepositoryImpl
@@ -64,6 +65,9 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
 
     private var isTorchOn: Boolean = false
     private var torchCameraId: String? = null
+
+    private var isNotificationShadeOpen: Boolean = false
+    private var isQuickSettingsOpen: Boolean = false
 
     private lateinit var stateOverlayManager: StateOverlayManager
     private var isVisualOverlayEnabled: Boolean = true
@@ -146,7 +150,10 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
         _isServiceRunning.value = true
 
         val info = serviceInfo ?: AccessibilityServiceInfo()
-        info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        info.flags = info.flags or
+                AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        info.eventTypes = info.eventTypes or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
         serviceInfo = info
     }
@@ -263,12 +270,10 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
                     }
                 }
                 KeyAction.OPEN_NOTIFICATIONS -> {
-                    performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
-                    _lastActionResult.value = "Notifications opened"
+                    toggleNotifications()
                 }
                 KeyAction.OPEN_QUICK_SETTINGS -> {
-                    performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-                    _lastActionResult.value = "Quick Settings opened"
+                    toggleQuickSettings()
                 }
                 KeyAction.LOCK_SCREEN -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -360,8 +365,79 @@ class EssentialKeyAccessibilityService : AccessibilityService() {
         } catch (_: Exception) {}
     }
 
+    private fun toggleNotifications() {
+        if (isShadeOpen(forQuickSettings = false)) {
+            dismissNotificationShade()
+            isNotificationShadeOpen = false
+            isQuickSettingsOpen = false
+            _lastActionResult.value = "Notifications closed"
+        } else {
+            performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+            isNotificationShadeOpen = true
+            isQuickSettingsOpen = false
+            _lastActionResult.value = "Notifications opened"
+        }
+    }
+
+    private fun toggleQuickSettings() {
+        if (isShadeOpen(forQuickSettings = true)) {
+            dismissNotificationShade()
+            isNotificationShadeOpen = false
+            isQuickSettingsOpen = false
+            _lastActionResult.value = "Quick Settings closed"
+        } else {
+            performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+            isQuickSettingsOpen = true
+            isNotificationShadeOpen = false
+            _lastActionResult.value = "Quick Settings opened"
+        }
+    }
+
+    private fun isShadeOpen(forQuickSettings: Boolean): Boolean {
+        try {
+            val windowList = windows
+            if (!windowList.isNullOrEmpty()) {
+                val hasFocusedSystemShade = windowList.any { w ->
+                    val isSystem = w.type == AccessibilityWindowInfo.TYPE_SYSTEM
+                    val title = w.title?.toString() ?: ""
+                    isSystem && (w.isFocused ||
+                            title.contains("Notification", ignoreCase = true) ||
+                            title.contains("Shade", ignoreCase = true) ||
+                            title.contains("Quick", ignoreCase = true))
+                }
+                if (hasFocusedSystemShade) {
+                    return true
+                }
+            }
+        } catch (_: Throwable) {}
+
+        return if (forQuickSettings) {
+            isQuickSettingsOpen
+        } else {
+            isNotificationShadeOpen || isQuickSettingsOpen
+        }
+    }
+
+    private fun dismissNotificationShade() {
+        var dismissed = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            dismissed = performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
+        }
+        if (!dismissed) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Intentionally empty. No screen or window monitoring requested.
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString() ?: ""
+            if (pkg.isNotEmpty() && pkg != "com.android.systemui") {
+                // When focus transitions back to any regular app or launcher,
+                // the notification or quick settings shade is closed.
+                isNotificationShadeOpen = false
+                isQuickSettingsOpen = false
+            }
+        }
     }
 
     override fun onInterrupt() {

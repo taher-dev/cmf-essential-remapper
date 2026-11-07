@@ -30,13 +30,13 @@ enum class KeyAction(
     ),
     OPEN_NOTIFICATIONS(
         id = "open_notifications",
-        title = "Open Notifications",
-        description = "Pull down notification drawer"
+        title = "Toggle Notifications",
+        description = "Open or close notification drawer"
     ),
     OPEN_QUICK_SETTINGS(
         id = "open_quick_settings",
-        title = "Quick Settings",
-        description = "Open quick settings panel"
+        title = "Toggle Quick Settings",
+        description = "Open or close quick settings panel"
     ),
     LOCK_SCREEN(
         id = "lock_screen",
