@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMF Essential Remapper — Live UI Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --surface-color: #121212;
+            --surface-border: #262626;
+            --red-accent: #D71921;
+            --text-white: #EEEEEE;
+            --text-gray-light: #AAAAAA;
+            --text-gray-medium: #777777;
+            --success-green: #4CAF50;
+            --dialog-bg: #121212;
+            --item-hover: #1E1E1E;
+            --item-selected: #1A1A1A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #0A0A0A;
+            color: var(--text-white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 24px 16px;
+        }
+
+        .header-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header-bar h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .header-bar p {
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* Phone frame mockup */
+        .device-frame {
+            width: 390px;
+            height: 844px;
+            background: var(--bg-color);
+            border: 10px solid #222;
+            border-radius: 48px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px #333;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Dynamic Island / Speaker punch */
+        .status-bar {
+            height: 44px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            color: #FFF;
+            z-index: 10;
+        }
+
+        .status-notch {
+            width: 12px;
+            height: 12px;
+            background: #000;
+            border-radius: 50%;
+            border: 2px solid #1a1a1a;
+        }
+
+        /* Screen Content */
+        .screen-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0 32px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Nothing Header */
+        .nothing-header {
+            padding: 12px 24px 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nothing-header-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text-white);
+            text-transform: uppercase;
+        }
+
+        .nothing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--red-accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .nothing-dot.green {
+            background-color: var(--success-green);
+        }
+
+        .nothing-dot.gray {
+            background-color: var(--text-gray-medium);
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            margin: 0 24px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .card.clickable {
+            cursor: pointer;
+        }
+
+        .card.clickable:hover {
+            border-color: #383838;
+            background-color: #161616;
+        }
+
+        .card-row {
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .card-row:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .card-row-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .card-text-col {
+            display: flex;
+            flex-direction: column;
+            margin-left: 14px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-white);
+        }
+
+        .card-subtext {
+            font-size: 12px;
+            margin-top: 4px;
+            color: var(--text-gray-light);
+        }
+
+        .card-subtext.configured {
+            color: var(--red-accent);
+        }
+
+        .card-subtext.success {
+            color: var(--success-green);
+        }
+
+        .chevron-icon {
+            color: var(--text-gray-light);
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .check-icon {
+            color: var(--success-green);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--surface-border);
+            width: 100%;
+        }
+
+        /* Section Header */
+        .section-header-row {
+            margin: 20px 24px 10px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 4px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-white);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        /* Modal Dialog */
+        .modal-dialog {
+            width: 92%;
+            max-height: 82%;
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+            animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-white);
+        }
+
+        .modal-subtitle {
+            font-size: 12px;
+            color: var(--text-gray-light);
+            margin-top: 4px;
+            margin-bottom: 18px;
+        }
+
+        .modal-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+        }
+
+        .modal-list::-webkit-scrollbar {
+            width: 3px;
+        }
+        .modal-list::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 14px;
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .option-item:hover {
+            background: #181818;
+            border-color: #383838;
+        }
+
+        .option-item.selected {
+            background: #1E1E1E;
+            border-color: var(--red-accent);
+        }
+
+        .radio-circle {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--text-gray-medium);
+            margin-right: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: border-color 0.2s;
+        }
+
+        .option-item.selected .radio-circle {
+            border-color: var(--red-accent);
+        }
+
+        .radio-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--red-accent);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .option-item.selected .radio-dot {
+            display: block;
+        }
+
+        .option-text-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .option-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-white);
+        }
+
+        .option-desc {
+            font-size: 12px;
+            color: var(--text-gray-light);
+            margin-top: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 18px;
+        }
+
+        .btn-cancel {
+            background: var(--surface-border);
+            color: var(--text-white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-cancel:hover {
+            background: #333;
+        }
+
+        /* Quick View Controls */
+        .preview-controls {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-btn {
+            background: #1E1E1E;
+            color: #CCC;
+            border: 1px solid #333;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preview-btn:hover {
+            background: #282828;
+            color: #FFF;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <h1>CMF Essential Remapper</h1>
+        <p>Interactive Live Mockup • Nothing OS Aesthetic</p>
+    </div>
+
+    <!-- Phone Bezel Device Mockup -->
+    <div class="device-frame">
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span>13:45</span>
+            <div class="status-notch"></div>
+            <span>5G 98%</span>
+        </div>
+
+        <!-- Main Screen -->
+        <div class="screen-container">
+            <!-- Nothing Header -->
+            <div class="nothing-header">
+                <span class="nothing-header-title">CMF ESSENTIAL REMAPPER</span>
+                <span class="nothing-dot"></span>
+            </div>
+
+            <!-- Setup & Permissions Card -->
+            <div class="card clickable" onclick="toggleSetupStatus()">
+                <div class="card-row">
+                    <div class="card-row-left">
+                        <span id="setupDot" class="nothing-dot green"></span>
+                        <div class="card-text-col">
+                            <span class="card-title">Setup &amp; Permissions</span>
+                            <span id="setupSubtitle" class="card-subtext success">All permissions granted</span>
+                        </div>
+                    </div>
+                    <span id="setupIcon" class="check-icon">✓</span>
+                </div>
+            </div>
+
+            <!-- Section Header: Button Mappings -->
+            <div class="section-header-row">
+                <span class="section-title">Button Mappings</span>
+                <span class="nothing-dot"></span>
+            </div>
+
+            <!-- Button Mappings Card -->
+            <div class="card">
+                <!-- Single Press -->
+                <div class="card-row" onclick="openAssignDialog('single')">
+                    <div class="card-row-left">
+                        <span id="singleDot" class="nothing-dot"></span>
+                        <div class="card-text-col">
+                            <span class="card-title">Single Press</span>
+                            <span id="singleText" class="card-subtext configured">Cycle Ring Mode 1</span>
+                        </div>
+                    </div>
+                    <span class="chevron-icon">›</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Double Press -->
+                <div class="card-row" onclick="openAssignDialog('double')">
+                    <div class="card-row-left">
+                        <span id="doubleDot" class="nothing-dot gray"></span>
+                        <div class="card-text-col">
+                            <span class="card-title">Double Press</span>
+                            <span id="doubleText" class="card-subtext">No action assigned</span>
+                        </div>
+                    </div>
+                    <span class="chevron-icon">›</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Long Press -->
+                <div class="card-row" onclick="openAssignDialog('long')">
+                    <div class="card-row-left">
+                        <span id="longDot" class="nothing-dot gray"></span>
+                        <div class="card-text-col">
+                            <span class="card-title">Long Press</span>
+                            <span id="longText" class="card-subtext">No action assigned</span>
+                        </div>
+                    </div>
+                    <span class="chevron-icon">›</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assign Function Modal Dialog -->
+        <div id="assignModal" class="modal-overlay">
+            <div class="modal-dialog">
+                <div class="modal-header">
+                    <h3 id="modalGestureTitle">Single Press</h3>
+                    <span class="nothing-dot"></span>
+                </div>
+                <div class="modal-subtitle">Assign function</div>
+
+                <div class="modal-list" id="modalOptionsList">
+                    <!-- Option 1: Cycle Ring Mode 1 -->
+                    <div class="option-item" onclick="selectAction('cycle_1', 'Cycle Ring Mode 1', 'Ring → Vibrate → Silent')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Cycle Ring Mode 1</span>
+                            <span class="option-desc">Ring → Vibrate → Silent</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 2: Cycle Ring Mode 2 -->
+                    <div class="option-item" onclick="selectAction('cycle_2', 'Cycle Ring Mode 2', 'Ring → Silent → Vibrate')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Cycle Ring Mode 2</span>
+                            <span class="option-desc">Ring → Silent → Vibrate</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 3: Toggle Flashlight -->
+                    <div class="option-item" onclick="selectAction('flashlight', 'Toggle Flashlight', 'Turn flashlight on or off')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Toggle Flashlight</span>
+                            <span class="option-desc">Turn flashlight on or off</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 4: Take Screenshot -->
+                    <div class="option-item" onclick="selectAction('screenshot', 'Take Screenshot', 'Capture the current screen')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Take Screenshot</span>
+                            <span class="option-desc">Capture the current screen</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 5: Open Notifications -->
+                    <div class="option-item" onclick="selectAction('notifications', 'Open Notifications', 'Pull down notification drawer')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Open Notifications</span>
+                            <span class="option-desc">Pull down notification drawer</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 6: Quick Settings -->
+                    <div class="option-item" onclick="selectAction('quick_settings', 'Quick Settings', 'Open quick settings panel')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Quick Settings</span>
+                            <span class="option-desc">Open quick settings panel</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 7: Lock Screen -->
+                    <div class="option-item" onclick="selectAction('lock_screen', 'Lock Screen', 'Turn off and lock the display')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Lock Screen</span>
+                            <span class="option-desc">Turn off and lock the display</span>
+                        </div>
+                    </div>
+
+                    <!-- Option 8: Do Nothing -->
+                    <div class="option-item" onclick="selectAction('none', 'Do Nothing', 'No action assigned')">
+                        <div class="radio-circle"><span class="radio-dot"></span></div>
+                        <div class="option-text-col">
+                            <span class="option-title">Do Nothing</span>
+                            <span class="option-desc">No action assigned</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeAssignDialog()">CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Preview Controls -->
+    <div class="preview-controls">
+        <button class="preview-btn" onclick="openAssignDialog('single')">Simulate Single Press Click</button>
+        <button class="preview-btn" onclick="openAssignDialog('double')">Simulate Double Press Click</button>
+        <button class="preview-btn" onclick="openAssignDialog('long')">Simulate Long Press Click</button>
+    </div>
+
+    <script>
+        let currentGesture = 'single';
+        const mappings = {
+            single: { id: 'cycle_1', title: 'Cycle Ring Mode 1' },
+            double: { id: 'none', title: 'No action assigned' },
+            long: { id: 'none', title: 'No action assigned' }
+        };
+
+        let isSetupComplete = true;
+
+        function toggleSetupStatus() {
+            isSetupComplete = !isSetupComplete;
+            const dot = document.getElementById('setupDot');
+            const sub = document.getElementById('setupSubtitle');
+            const icon = document.getElementById('setupIcon');
+
+            if (isSetupComplete) {
+                dot.className = 'nothing-dot green';
+                sub.className = 'card-subtext success';
+                sub.textContent = 'All permissions granted';
+                icon.className = 'check-icon';
+                icon.textContent = '✓';
+            } else {
+                dot.className = 'nothing-dot';
+                sub.className = 'card-subtext';
+                sub.textContent = 'Configuration required';
+                icon.className = 'chevron-icon';
+                icon.textContent = '›';
+            }
+        }
+
+        function openAssignDialog(gesture) {
+            currentGesture = gesture;
+            const titles = { single: 'Single Press', double: 'Double Press', long: 'Long Press' };
+            document.getElementById('modalGestureTitle').textContent = titles[gesture];
+
+            const currentId = mappings[gesture].id;
+            const options = document.querySelectorAll('.option-item');
+            options.forEach(opt => {
+                const optOnClick = opt.getAttribute('onclick');
+                if (optOnClick.includes("'" + currentId + "'")) {
+                    opt.classList.add('selected');
+                } else {
+                    opt.classList.remove('selected');
+                }
+            });
+
+            document.getElementById('assignModal').classList.add('active');
+        }
+
+        function closeAssignDialog() {
+            document.getElementById('assignModal').classList.remove('active');
+        }
+
+        function selectAction(actionId, actionTitle, actionDesc) {
+            mappings[currentGesture].id = actionId;
+            mappings[currentGesture].title = actionTitle;
+
+            const textEl = document.getElementById(currentGesture + 'Text');
+            const dotEl = document.getElementById(currentGesture + 'Dot');
+
+            if (actionId === 'none') {
+                textEl.textContent = 'No action assigned';
+                textEl.className = 'card-subtext';
+                dotEl.className = 'nothing-dot gray';
+            } else {
+                textEl.textContent = actionTitle;
+                textEl.className = 'card-subtext configured';
+                dotEl.className = 'nothing-dot';
+            }
+
+            closeAssignDialog();
+        }
+
+        // Close on outside click
+        document.getElementById('assignModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAssignDialog();
+            }
+        });
+    </script>
+</body>
+</html>
+
