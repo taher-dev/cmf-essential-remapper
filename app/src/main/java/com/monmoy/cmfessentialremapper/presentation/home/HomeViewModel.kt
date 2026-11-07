@@ -176,12 +176,12 @@ class HomeViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    fun onSettingsClicked() {
-        _uiState.update { it.copy(isSettingsDialogOpen = true) }
+    fun onOpenPrivacyPolicy() {
+        _uiState.update { it.copy(isPrivacyPolicyDialogOpen = true) }
     }
 
-    fun onDismissSettingsDialog() {
-        _uiState.update { it.copy(isSettingsDialogOpen = false) }
+    fun onDismissPrivacyPolicy() {
+        _uiState.update { it.copy(isPrivacyPolicyDialogOpen = false) }
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {

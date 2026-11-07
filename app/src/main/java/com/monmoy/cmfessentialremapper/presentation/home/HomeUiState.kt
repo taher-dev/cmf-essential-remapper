@@ -13,7 +13,7 @@ data class HomeUiState(
     val keyStatus: EssentialKeyStatus = EssentialKeyStatus.NotConfigured,
     val isSetupComplete: Boolean = false,
     val isChangingMode: Boolean = false,
-    val isSettingsDialogOpen: Boolean = false,
+    val isPrivacyPolicyDialogOpen: Boolean = false,
     val errorMessage: String? = null,
     val singlePressAction: KeyAction = KeyAction.CYCLE_RINGER,
     val doublePressAction: KeyAction = KeyAction.NONE,

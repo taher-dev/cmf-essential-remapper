@@ -57,8 +57,8 @@ class MainActivity : ComponentActivity() {
                             onNavigateToKeyLearning = { currentScreen = AppScreen.KEY_LEARNING },
                             onNavigateToDiagnostics = { currentScreen = AppScreen.DIAGNOSTICS },
                             onErrorMessageDismissed = homeViewModel::onErrorMessageDismissed,
-                            onSettingsClick = homeViewModel::onSettingsClicked,
-                            onDismissSettingsDialog = homeViewModel::onDismissSettingsDialog,
+                            onOpenPrivacyPolicy = homeViewModel::onOpenPrivacyPolicy,
+                            onDismissPrivacyPolicy = homeViewModel::onDismissPrivacyPolicy,
                             onAppResumed = homeViewModel::onAppResumed
                         )
                     }

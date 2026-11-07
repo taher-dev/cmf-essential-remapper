@@ -51,7 +51,7 @@ import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import com.monmoy.cmfessentialremapper.presentation.components.ActionSelectionDialog
 import com.monmoy.cmfessentialremapper.presentation.components.GestureActionCard
 import com.monmoy.cmfessentialremapper.presentation.components.NothingHeader
-import com.monmoy.cmfessentialremapper.presentation.components.SettingsDialog
+import com.monmoy.cmfessentialremapper.presentation.components.PrivacyPolicyDialog
 import com.monmoy.cmfessentialremapper.presentation.theme.CmfRedAccent
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingBackground
 import com.monmoy.cmfessentialremapper.presentation.theme.NothingGrayLight
@@ -75,8 +75,8 @@ fun HomeScreen(
     onNavigateToKeyLearning: () -> Unit = {},
     onNavigateToDiagnostics: () -> Unit = {},
     onErrorMessageDismissed: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onDismissSettingsDialog: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    onDismissPrivacyPolicy: () -> Unit,
     onAppResumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -271,6 +271,83 @@ fun HomeScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // About & Privacy Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "About",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = NothingWhite
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(CmfRedAccent)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = true, color = CmfRedAccent),
+                            onClick = onOpenPrivacyPolicy
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = NothingSurface),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = SolidColor(NothingSurfaceBorder)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Privacy Policy",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = NothingWhite
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "100% Offline • Zero Telemetry • Open Source",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NothingGrayLight
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = "Open Privacy Policy",
+                            tint = NothingGrayLight,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
 
@@ -290,9 +367,9 @@ fun HomeScreen(
             )
         }
 
-        if (uiState.isSettingsDialogOpen) {
-            SettingsDialog(
-                onDismissRequest = onDismissSettingsDialog
+        if (uiState.isPrivacyPolicyDialogOpen) {
+            PrivacyPolicyDialog(
+                onDismissRequest = onDismissPrivacyPolicy
             )
         }
     }
