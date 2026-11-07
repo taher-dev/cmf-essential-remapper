@@ -9,9 +9,8 @@
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3"
         android:pathData="M54,26 A28,28 0 1,0 54,82 A28,28 0 1,0 54,26" />
-    <!-- CMF Red accent dot -->
+    <!-- CMF Essential Key Vertical Capsule -->
     <path
-        android:fillColor="#E11D2A"
-        android:pathData="M54,50 A4,4 0 1,0 54,58 A4,4 0 1,0 54,50" />
+        android:fillColor="#D71921"
+        android:pathData="M48,46 A6,6 0 0,1 60,46 L60,62 A6,6 0 0,1 48,62 Z" />
 </vector>
-

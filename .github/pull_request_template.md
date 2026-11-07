@@ -20,3 +20,4 @@ Brief summary of the changes introduced in this Pull Request.
 - [ ] I have verified that `./gradlew assembleDebug` builds without errors.
 - [ ] If changing gestures or mappings, I have verified the offline-first privacy model (no internet permissions added).
 - [ ] If changing UI, I have updated `preview.html` accordingly.
+

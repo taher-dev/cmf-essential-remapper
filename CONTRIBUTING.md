@@ -66,3 +66,4 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 5. Fill out the provided Pull Request template.
 
 Thank you for helping make CMF Essential Remapper better for everyone!
+

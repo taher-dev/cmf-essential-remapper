@@ -36,3 +36,4 @@ Please include:
 - Any potential impact.
 
 You will receive an acknowledgment within 48 hours, and any confirmed vulnerabilities will be addressed in an expedited release.
+

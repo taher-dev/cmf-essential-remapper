@@ -34,3 +34,4 @@ Welcome to the first open-source release of **CMF Essential Remapper**, purpose-
   - Deep matte dark interface (`#121212`), 1dp borders, red accent details, and Space Grotesk typography.
 - **Developer & About Dialog:**
   - Built-in developer attribution dialog with direct links to GitHub ([`taher-dev`](https://github.com/taher-dev)) and Portfolio ([`monmoy.pages.dev`](https://monmoy.pages.dev)).
+
