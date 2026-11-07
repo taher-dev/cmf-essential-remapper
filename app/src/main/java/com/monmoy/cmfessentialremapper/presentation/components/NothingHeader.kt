@@ -67,7 +67,7 @@ fun NothingHeader(
             IconButton(
                 onClick = onDeveloperClick,
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(22.dp)
                     .clip(CircleShape)
                     .background(NothingSurface)
                     .border(1.dp, NothingSurfaceBorder, CircleShape)
@@ -76,7 +76,7 @@ fun NothingHeader(
                     imageVector = Icons.Outlined.Person,
                     contentDescription = "Developer Info",
                     tint = NothingWhite,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(13.dp)
                 )
             }
         }
