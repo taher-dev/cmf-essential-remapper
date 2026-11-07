@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.monmoy.cmfessentialremapper.domain.model.KeyAction
 import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import com.monmoy.cmfessentialremapper.presentation.components.ActionSelectionDialog
+import com.monmoy.cmfessentialremapper.presentation.components.DeveloperInfoDialog
 import com.monmoy.cmfessentialremapper.presentation.components.GestureActionCard
 import com.monmoy.cmfessentialremapper.presentation.components.NothingHeader
 import com.monmoy.cmfessentialremapper.presentation.components.PrivacyPolicyDialog
@@ -77,6 +78,8 @@ fun HomeScreen(
     onErrorMessageDismissed: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit,
     onDismissPrivacyPolicy: () -> Unit,
+    onDeveloperClick: () -> Unit = {},
+    onDismissDeveloperInfo: () -> Unit = {},
     onAppResumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -115,7 +118,9 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Top
         ) {
             // Header
-            NothingHeader()
+            NothingHeader(
+                onDeveloperClick = onDeveloperClick
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -370,6 +375,12 @@ fun HomeScreen(
         if (uiState.isPrivacyPolicyDialogOpen) {
             PrivacyPolicyDialog(
                 onDismissRequest = onDismissPrivacyPolicy
+            )
+        }
+
+        if (uiState.isDeveloperInfoDialogOpen) {
+            DeveloperInfoDialog(
+                onDismissRequest = onDismissDeveloperInfo
             )
         }
     }

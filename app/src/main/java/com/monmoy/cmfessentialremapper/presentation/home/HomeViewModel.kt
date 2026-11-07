@@ -184,6 +184,14 @@ class HomeViewModel(
         _uiState.update { it.copy(isPrivacyPolicyDialogOpen = false) }
     }
 
+    fun onOpenDeveloperInfo() {
+        _uiState.update { it.copy(isDeveloperInfoDialogOpen = true) }
+    }
+
+    fun onDismissDeveloperInfo() {
+        _uiState.update { it.copy(isDeveloperInfoDialogOpen = false) }
+    }
+
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {

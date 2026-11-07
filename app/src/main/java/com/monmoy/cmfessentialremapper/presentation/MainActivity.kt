@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
                             onErrorMessageDismissed = homeViewModel::onErrorMessageDismissed,
                             onOpenPrivacyPolicy = homeViewModel::onOpenPrivacyPolicy,
                             onDismissPrivacyPolicy = homeViewModel::onDismissPrivacyPolicy,
+                            onDeveloperClick = homeViewModel::onOpenDeveloperInfo,
+                            onDismissDeveloperInfo = homeViewModel::onDismissDeveloperInfo,
                             onAppResumed = homeViewModel::onAppResumed
                         )
                     }
