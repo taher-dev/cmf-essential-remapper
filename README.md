@@ -1,131 +1,133 @@
+<div align="center">
+
 # CMF Essential Remapper
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-13%2B%20(API%2033%2B)-green.svg)](https://developer.android.com)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20No%20Tracking-red.svg)](PRIVACY_POLICY.md)
-[![Nothing OS](https://img.shields.io/badge/Design-Nothing%20OS%20Aesthetic-black.svg)](preview.html)
+**Give your CMF Essential Key the powers it was meant to have.**
 
-A lightweight, open-source Android utility designed specifically for **CMF by Nothing** devices (CMF Phone 1, CMF Phone 2 Pro) to remap the physical **Essential Key** hardware button to custom actions, ring mode cycling, and quick system shortcuts with a native Nothing OS HUD overlay.
+[![Release](https://img.shields.io/badge/Release-v1.0.0-D71921?style=for-the-badge&logo=android&logoColor=white)](https://github.com/taher-dev/cmf-essential-remapper/releases/latest)
+[![License](https://img.shields.io/badge/License-Apache_2.0-181818?style=for-the-badge&logo=open-source-initiative&logoColor=white)](LICENSE)
+[![Target](https://img.shields.io/badge/Device-CMF%20Phone%201%20%7C%202%20Pro-181818?style=for-the-badge&logo=nothing&logoColor=white)](https://nothing.tech)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline-4CAF50?style=for-the-badge&logo=shield&logoColor=white)](PRIVACY_POLICY.md)
+
+<br/>
+
+[**Download Latest APK**](https://github.com/taher-dev/cmf-essential-remapper/releases/latest) • [**Interactive Web Preview**](https://htmlpreview.github.io/?https://github.com/taher-dev/cmf-essential-remapper/blob/main/preview.html) • [**Privacy Policy**](PRIVACY_POLICY.md) • [**Report an Issue**](https://github.com/taher-dev/cmf-essential-remapper/issues)
+
+</div>
 
 ---
 
-## Features
+## ⚡ What is CMF Essential Remapper?
 
-- **Hardware Key Interception**: Intercepts CMF Essential Key presses (hardware scan code `250` or dynamically learned key code) without screen monitoring.
-- **Multiple Gesture Recognition**: Supports customizable mappings for:
+On stock **Nothing OS**, the physical **Essential Key** on CMF devices is often locked to OEM shortcuts like Essential Space or voice recorder.
+
+**CMF Essential Remapper** is a lightweight, zero-bloat, open-source Android utility that intercepts the physical hardware key and unlocks customizable single-press, double-press, and long-press actions — complete with a sleek, native **Nothing OS floating capsule HUD** overlay.
+
+> **100% Offline Promise:** No internet permissions (`android.permission.INTERNET` is omitted entirely). No analytics, no telemetry, no tracking. Your device stays entirely yours.
+
+---
+
+## ✨ Features
+
+- 🔴 **Physical Hardware Key Interception:** Direct hardware filtering (scan code `250` or dynamic learning) without inspecting screen touch or reading content.
+- 🎯 **3 Distinct Hardware Gestures:**
   - **Single Press**
   - **Double Press**
   - **Long Press**
-- **Dual Ringer Cycling Modes**:
-  - **Cycle Ring Mode 1**: `Ring → Vibrate → Silent → Ring`
-  - **Cycle Ring Mode 2**: `Ring → Silent → Vibrate → Ring`
-- **Toggleable System Actions**:
-  - **Toggle Notifications**: Pulls down or dismisses the notification drawer.
-  - **Toggle Quick Settings**: Expands or dismisses the quick settings panel.
-  - **Toggle Flashlight**: Hardware camera torch on/off with state awareness.
-  - **Take Screenshot**: Global screenshot capture.
-  - **Lock Screen**: Immediately locks display without waking.
-- **Nothing OS Visual State HUD Overlay**:
-  - Sleek top-center matte capsule HUD overlay displaying state (`RING`, `VIBRATE`, `SILENT`, `TORCH ON/OFF`) with Nothing red status dot.
-  - Non-intrusive, non-focusable, and non-touchable (`FLAG_NOT_TOUCHABLE`) — never interrupts active apps or games.
-  - Can be toggled on or off in the Display preferences.
-- **Audio Transition Engine**:
-  - Smooth transitions across all ringer modes, bypassing AOSP `ZenModeHelper` vibration locks when cycling `VIBRATE → SILENT`.
-- **100% Privacy & Zero Network**:
-  - Zero internet permissions (`android.permission.INTERNET` is not requested).
-  - `canRetrieveWindowContent="false"` ensures zero access to screen text or passwords.
-  - Local settings stored on-device via Jetpack DataStore.
+- 🔔 **Dual Ring Mode Cycling:**
+  - **Cycle Ring Mode 1:** `Ring → Vibrate → Silent → Ring`
+  - **Cycle Ring Mode 2:** `Ring → Silent → Vibrate → Ring`
+  *(Bypasses AOSP ZenModeHelper vibration lock when cycling between modes).*
+- 🛠 **System Utility Actions:**
+  - **Toggle Flashlight:** State-aware camera torch toggle.
+  - **Toggle Notifications:** Opens notification shade or dismisses it on repeated press.
+  - **Toggle Quick Settings:** Expands quick tiles or closes them on repeated press.
+  - **Take Screenshot:** Instant global screen capture.
+  - **Lock Screen:** One-click screen sleep.
+- 💊 **Nothing OS Floating State Capsule HUD:**
+  - Minimalist matte capsule pill HUD at the top center showing status (`RING`, `VIBRATE`, `SILENT`, `TORCH ON/OFF`) with signature red dot accent.
+  - Uses `FLAG_NOT_TOUCHABLE` and `FLAG_NOT_FOCUSABLE` — never blocks touches, typing, or gaming.
+  - Can be toggled on/off in the app settings.
+- 🧊 **Optional Conflicting App Freeze via Shizuku:**
+  - If OEM apps (Essential Space, Recorder) conflict with your hardware button, freeze them safely with one tap using Shizuku.
 
 ---
 
-## Architecture & Tech Stack
+## 🚀 Quick Start & Installation
 
-- **UI Framework:** Jetpack Compose + Material 3 (Nothing OS Minimalist Dark Aesthetic)
-- **Architecture Pattern:** Clean Architecture + MVI/MVVM with Kotlin Coroutines & Flow
-- **Key Interception:** Android `AccessibilityService` (`FLAG_REQUEST_FILTER_KEY_EVENTS`)
-- **Overlay Window:** `WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY`
-- **Local Persistence:** Jetpack Preferences DataStore
-- **Optional Privilege Bridge:** Shizuku API (for freezing conflicting OEM system apps or direct privileged audio binder calls)
+### Option 1: Direct APK Download (Recommended)
+1. Go to [**Releases**](https://github.com/taher-dev/cmf-essential-remapper/releases/latest) and download the latest `CMF-Essential-Remapper-v1.0.0.apk`.
+2. Install the APK on your **CMF Phone 1** or **CMF Phone 2 Pro**.
 
-```
-com.monmoy.cmfessentialremapper/
-│
-├── data/
-│   ├── preferences/DataStoreManager.kt         # Jetpack DataStore for local persistence
-│   └── repository/RingerModeRepositoryImpl.kt  # Audio framework & Shizuku binder IPC
-│
-├── domain/
-│   ├── model/KeyAction.kt                      # Customizable key actions & gestures
-│   ├── model/RingerMode.kt                     # SILENT, VIBRATE, RING modes
-│   └── usecase/CycleRingerModeUseCase.kt       # Dual ringer cycle order logic
-│
-├── presentation/
-│   ├── MainActivity.kt                         # Single Activity edge-to-edge container
-│   ├── home/HomeScreen.kt                      # Main dashboard & configuration
-│   ├── components/GestureActionCard.kt         # Nothing OS gesture assignment cards
-│   ├── components/PrivacyPolicyDialog.kt       # In-app privacy disclosure
-│   ├── overlay/StateOverlayManager.kt          # Floating Nothing OS capsule HUD
-│   └── setup/SetupScreen.kt                    # Step-by-step permissions wizard
-│
-├── service/
-│   └── EssentialKeyAccessibilityService.kt     # Hardware key filtering & gesture engine
-│
-└── utils/
-    ├── KeyGestureClassifier.kt                 # Finite state machine for key gestures
-    └── EssentialSpaceManager.kt                # Package management for OEM conflicting apps
+### Option 2: Install via ADB
+```bash
+adb install -r CMF-Essential-Remapper-v1.0.0.apk
 ```
 
 ---
 
-## Setup & Installation
+## ⚙️ Permission Setup (Why they are needed)
 
-1. **Build and Install:**
-   ```bash
-   ./gradlew assembleDebug
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
-   ```
+CMF Essential Remapper strictly asks only for the permissions required to operate hardware shortcuts:
 
-2. **Grant Required Permissions:**
-   - **Accessibility Service:** Settings → Accessibility → Enable **CMF Essential Remapper**.
-   - **Do Not Disturb Access (Notification Policy Access):** Required on modern Android for entering Silent mode.
-   - **Battery Optimization:** Whitelist the app so the accessibility service remains persistent in the background.
-
-3. *(Optional)* **Disable OEM Essential Space:**
-   On stock Nothing OS, pressing the Essential Key may launch Nothing's default Essential Space or Recorder. If you have Shizuku active, CMF Essential Remapper can freeze those two packages directly from the Setup screen with one tap.
+| Permission | Purpose | Why It's Safe |
+| :--- | :--- | :--- |
+| **Accessibility Service** | Detects physical hardware key press events | Configured with `canRetrieveWindowContent="false"`. Cannot read passwords, screen text, or personal messages. |
+| **Notification Policy (DND)** | Enables setting device to Silent mode | Standard Android requirement to change ringer to Silent without muting alarms. |
+| **Battery Optimization** | Keeps service active in the background | Prevents Nothing OS aggressive background killing. |
+| **Shizuku** *(Optional)* | Disables conflicting OEM packages with one tap | Entirely optional; you can also disable OEM apps manually in Android Settings. |
 
 ---
 
-## Privacy Policy
+## 📱 Interactive Web Preview
 
-CMF Essential Remapper is built on strict open-source privacy values:
-- **No Internet Access:** The app has no network access and cannot transmit data.
-- **No Analytics / Telemetry:** No tracking, no device IDs, no advertising SDKs.
-- **No Screen Reading:** The service cannot read screen text, passwords, or messages.
+Experience the app interface, try button mappings, and test the floating HUD pill right in your browser without installing anything!
 
-Read the full [Privacy Policy](PRIVACY_POLICY.md).
+👉 **[Launch Interactive Web Preview](https://htmlpreview.github.io/?https://github.com/taher-dev/cmf-essential-remapper/blob/main/preview.html)**
 
 ---
 
-## Interactive UI Preview
+## 🛠️ Building from Source
 
-An interactive, responsive preview simulating the device UI, button mappings, and the HUD pill overlay is available in [`preview.html`](preview.html). Open it in any modern browser to test the interactive mockup.
+```bash
+# Clone the repository
+git clone https://github.com/taher-dev/cmf-essential-remapper.git
+cd cmf-essential-remapper
 
----
+# Run tests
+./gradlew testDebugUnitTest
 
-## License
+# Build debug APK
+./gradlew assembleDebug
 
+# Install to connected device
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
-Copyright 2026 CMF Essential Remapper Contributors
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+---
 
-    http://www.apache.org/licenses/LICENSE-2.0
+## 🛡️ Privacy & Transparency
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
+CMF Essential Remapper is built on transparency:
+- **Zero Internet Access:** The app does not request `android.permission.INTERNET`. It cannot send data over Wi-Fi, cellular, or Bluetooth.
+- **Zero Analytics / SDKs:** No Firebase, no Google Analytics, no crash reporters.
+- **Local Storage Only:** Preferences are saved on your phone via Jetpack DataStore.
+
+Read our full [**Privacy Policy**](PRIVACY_POLICY.md).
+
+---
+
+## 👤 Developer & Maintainer
+
+Crafted by **Taher Mahmud Monmoy**:
+- 🌐 **Portfolio:** [monmoy.pages.dev](https://monmoy.pages.dev/)
+- 💻 **GitHub:** [@taher-dev](https://github.com/taher-dev)
+- 💼 **LinkedIn:** [linkedin.com/in/taher-mahmud-monmoy](https://linkedin.com/in/taher-mahmud-monmoy)
+
+> *"Just a developer based in Bangladesh who likes building cool stuff, tweaking hardware, and making lightweight tools that make tech feel a little better."*
+
+---
+
+## 📄 License
+
+Licensed under the **Apache License, Version 2.0**. See the [LICENSE](LICENSE) file for details.
