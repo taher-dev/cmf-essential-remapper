@@ -1,127 +1,131 @@
 # CMF Essential Remapper
 
-A native Android application designed specifically for the **CMF Phone 2 Pro** to remap the dedicated **Essential Key** into a hardware-style three-stage ring mode controller (Silent, Vibrate, Ring).
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-13%2B%20(API%2033%2B)-green.svg)](https://developer.android.com)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20No%20Tracking-red.svg)](PRIVACY_POLICY.md)
+[![Nothing OS](https://img.shields.io/badge/Design-Nothing%20OS%20Aesthetic-black.svg)](preview.html)
+
+A lightweight, open-source Android utility designed specifically for **CMF by Nothing** devices (CMF Phone 1, CMF Phone 2 Pro) to remap the physical **Essential Key** hardware button to custom actions, ring mode cycling, and quick system shortcuts with a native Nothing OS HUD overlay.
 
 ---
 
-## 1. Project Overview & Progress
+## Features
 
-- **Target Device:** CMF Phone 2 Pro (Android 14 / Nothing OS 2.6+)
-- **Package Name:** `com.monmoy.cmfessentialremapper`
-- **Minimum SDK:** 33 (Android 13)
-- **Target SDK:** 35 (Android 15)
-- **UI Engine:** Jetpack Compose + Material 3 (Nothing OS Minimalist Dark Aesthetic)
-- **Architecture:** Clean Architecture + MVVM
-
-### Stages:
-- [x] **Step 1: Project Foundation** — Clean architecture, Nothing OS design system, Gradle & build pipeline.
-- [x] **Step 2: Ringer Mode Engine** — Reliable AudioManager ringer mode control, Notification Policy Access (DND) management, interactive Compose indicators, lifecycle awareness, and comprehensive test suite.
-- [ ] **Step 3: Hardware Key Interception & Accessibility Bridge** *(Pending Approval)*.
+- **Hardware Key Interception**: Intercepts CMF Essential Key presses (hardware scan code `250` or dynamically learned key code) without screen monitoring.
+- **Multiple Gesture Recognition**: Supports customizable mappings for:
+  - **Single Press**
+  - **Double Press**
+  - **Long Press**
+- **Dual Ringer Cycling Modes**:
+  - **Cycle Ring Mode 1**: `Ring → Vibrate → Silent → Ring`
+  - **Cycle Ring Mode 2**: `Ring → Silent → Vibrate → Ring`
+- **Toggleable System Actions**:
+  - **Toggle Notifications**: Pulls down or dismisses the notification drawer.
+  - **Toggle Quick Settings**: Expands or dismisses the quick settings panel.
+  - **Toggle Flashlight**: Hardware camera torch on/off with state awareness.
+  - **Take Screenshot**: Global screenshot capture.
+  - **Lock Screen**: Immediately locks display without waking.
+- **Nothing OS Visual State HUD Overlay**:
+  - Sleek top-center matte capsule HUD overlay displaying state (`RING`, `VIBRATE`, `SILENT`, `TORCH ON/OFF`) with Nothing red status dot.
+  - Non-intrusive, non-focusable, and non-touchable (`FLAG_NOT_TOUCHABLE`) — never interrupts active apps or games.
+  - Can be toggled on or off in the Display preferences.
+- **Audio Transition Engine**:
+  - Smooth transitions across all ringer modes, bypassing AOSP `ZenModeHelper` vibration locks when cycling `VIBRATE → SILENT`.
+- **100% Privacy & Zero Network**:
+  - Zero internet permissions (`android.permission.INTERNET` is not requested).
+  - `canRetrieveWindowContent="false"` ensures zero access to screen text or passwords.
+  - Local settings stored on-device via Jetpack DataStore.
 
 ---
 
-## 2. Package Architecture
+## Architecture & Tech Stack
+
+- **UI Framework:** Jetpack Compose + Material 3 (Nothing OS Minimalist Dark Aesthetic)
+- **Architecture Pattern:** Clean Architecture + MVI/MVVM with Kotlin Coroutines & Flow
+- **Key Interception:** Android `AccessibilityService` (`FLAG_REQUEST_FILTER_KEY_EVENTS`)
+- **Overlay Window:** `WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY`
+- **Local Persistence:** Jetpack Preferences DataStore
+- **Optional Privilege Bridge:** Shizuku API (for freezing conflicting OEM system apps or direct privileged audio binder calls)
 
 ```
 com.monmoy.cmfessentialremapper/
 │
 ├── data/
-│   ├── preferences/
-│   │   └── DataStoreManager.kt               # Jetpack DataStore implementation for local settings
-│   └── repository/
-│       ├── RingerModeRepository.kt           # Interface: live observation, mode setting, DND status
-│       └── RingerModeRepositoryImpl.kt       # AudioManager & NotificationManager integration
+│   ├── preferences/DataStoreManager.kt         # Jetpack DataStore for local persistence
+│   └── repository/RingerModeRepositoryImpl.kt  # Audio framework & Shizuku binder IPC
 │
 ├── domain/
-│   ├── model/
-│   │   ├── RingerMode.kt                     # SILENT, VIBRATE, RING + cycling & policy requirements
-│   │   └── EssentialKeyStatus.kt             # Hardware configuration status (NotConfigured, Ready)
-│   └── usecase/
-│       ├── GetRingerModeUseCase.kt           # Observes live system ringer changes
-│       ├── SetRingerModeUseCase.kt           # Validates and sets mode with DND checks
-│       ├── CheckNotificationPolicyAccessUseCase.kt # Queries DND policy permission
-│       └── GetEssentialKeyStatusUseCase.kt   # Observes key mapping status
+│   ├── model/KeyAction.kt                      # Customizable key actions & gestures
+│   ├── model/RingerMode.kt                     # SILENT, VIBRATE, RING modes
+│   └── usecase/CycleRingerModeUseCase.kt       # Dual ringer cycle order logic
 │
 ├── presentation/
-│   ├── MainActivity.kt                       # Single Activity, edge-to-edge, onResume permission check
-│   ├── home/
-│   │   ├── HomeScreen.kt                     # Compose screen with interactive modes & DND notice
-│   │   ├── HomeViewModel.kt                  # StateFlow coordination, concurrency lock, error handling
-│   │   └── HomeUiState.kt                    # Immutable state (modes, permission dialog, loading)
-│   ├── components/
-│   │   ├── ModeIndicatorCard.kt              # Interactive Silent / Vibrate / Ring cards with Material 3 ripple
-│   │   ├── PermissionDialog.kt               # Nothing-styled DND permission explanation & settings button
-│   │   ├── KeyStatusCard.kt                  # Essential Key status indicator ("Not Configured")
-│   │   ├── NothingHeader.kt                  # Header with status LED and settings launcher
-│   │   └── SettingsDialog.kt                 # Architecture and step roadmap dialog
-│   └── theme/
-│       ├── Color.kt                          # Nothing Black (#080808) & CMF Red Accent (#D71921)
-│       ├── Theme.kt                          # Material 3 dark-first theme
-│       └── Type.kt                           # Clean Sans & JetBrains Mono typography
-│
-├── receiver/
-│   └── RingerModeReceiver.kt                 # BroadcastReceiver for AudioManager.RINGER_MODE_CHANGED_ACTION
+│   ├── MainActivity.kt                         # Single Activity edge-to-edge container
+│   ├── home/HomeScreen.kt                      # Main dashboard & configuration
+│   ├── components/GestureActionCard.kt         # Nothing OS gesture assignment cards
+│   ├── components/PrivacyPolicyDialog.kt       # In-app privacy disclosure
+│   ├── overlay/StateOverlayManager.kt          # Floating Nothing OS capsule HUD
+│   └── setup/SetupScreen.kt                    # Step-by-step permissions wizard
 │
 ├── service/
-│   └── ServiceNotice.kt                      # Architecture boundary: AccessibilityService reserved for Step 3
+│   └── EssentialKeyAccessibilityService.kt     # Hardware key filtering & gesture engine
 │
 └── utils/
-    └── AudioUtils.kt                         # Conversion utilities between Android framework & domain
+    ├── KeyGestureClassifier.kt                 # Finite state machine for key gestures
+    └── EssentialSpaceManager.kt                # Package management for OEM conflicting apps
 ```
 
 ---
 
-## 3. Ringer Mode & Permission Management
+## Setup & Installation
 
-### Ringer Modes Supported:
-1. **SILENT (`AudioManager.RINGER_MODE_SILENT`)**:
-   - Switching into Silent mode on modern Android requires **Notification Policy Access (Do Not Disturb access)**.
-   - If permission is missing when tapped, a compact dialog explains why the permission is required and provides a direct shortcut to system settings (`Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS`).
-   - When the user returns to the app, permission is rechecked automatically in `MainActivity.onResume()`.
-2. **VIBRATE (`AudioManager.RINGER_MODE_VIBRATE`)**:
-   - Switches the phone to vibrate mode immediately without requiring special DND permissions.
-3. **RING (`AudioManager.RINGER_MODE_NORMAL`)**:
-   - Restores normal ringer volume and alerts.
-
-### Concurrency & Redundancy Protections:
-- **No-Op Protection:** Tapping the currently active mode produces no redundant system operations.
-- **Race Condition Guard:** `isChangingMode` lock prevents multiple simultaneous mode switches.
-- **Verification Guarantee:** The UI indicator state is driven by live `AudioManager` observations through `callbackFlow` and `RingerModeReceiver`.
-
----
-
-## 4. Manual Testing Procedure on CMF Phone 2 Pro / Emulator
-
-1. **Install the Debug APK:**
+1. **Build and Install:**
    ```bash
+   ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
-2. **Test Direct Mode Switching (Vibrate & Ring):**
-   - Tap **Vibrate**: Observe the phone vibrate, the red indicator switch to Vibrate, and status bar display vibrate icon.
-   - Tap **Ring**: Observe the phone exit vibrate mode, and the red indicator switch to Ring.
-3. **Test DND Permission Flow (Silent Mode):**
-   - Tap **Silent** (without granting DND permission beforehand).
-   - Verify that the **Notification Policy Access** dialog appears with clear explanation.
-   - Tap **OPEN SETTINGS**: The app opens Android's Special App Access -> Do Not Disturb access page.
-   - Toggle **Allow** for *CMF Essential Remapper*, then tap Back to return to the app.
-   - Verify that the app automatically recognizes the permission on resume and the warning badge disappears.
-   - Tap **Silent** again: Verify the phone enters Silent mode.
-4. **Test External Changes (Physical Volume Keys):**
-   - Change the ringer mode using the phone's physical volume rocker or quick settings tile.
-   - Verify that the app's `[LIVE FEED]` indicator automatically updates to reflect the new system state in real time.
+
+2. **Grant Required Permissions:**
+   - **Accessibility Service:** Settings → Accessibility → Enable **CMF Essential Remapper**.
+   - **Do Not Disturb Access (Notification Policy Access):** Required on modern Android for entering Silent mode.
+   - **Battery Optimization:** Whitelist the app so the accessibility service remains persistent in the background.
+
+3. *(Optional)* **Disable OEM Essential Space:**
+   On stock Nothing OS, pressing the Essential Key may launch Nothing's default Essential Space or Recorder. If you have Shizuku active, CMF Essential Remapper can freeze those two packages directly from the Setup screen with one tap.
 
 ---
 
-## 5. Build Commands
+## Privacy Policy
 
-```bash
-# Execute unit test suite
-./gradlew.bat testDebugUnitTest
+CMF Essential Remapper is built on strict open-source privacy values:
+- **No Internet Access:** The app has no network access and cannot transmit data.
+- **No Analytics / Telemetry:** No tracking, no device IDs, no advertising SDKs.
+- **No Screen Reading:** The service cannot read screen text, passwords, or messages.
 
-# Run Android Lint
-./gradlew.bat lintDebug
+Read the full [Privacy Policy](PRIVACY_POLICY.md).
 
-# Build debug APK
-./gradlew.bat assembleDebug
+---
+
+## Interactive UI Preview
+
+An interactive, responsive preview simulating the device UI, button mappings, and the HUD pill overlay is available in [`preview.html`](preview.html). Open it in any modern browser to test the interactive mockup.
+
+---
+
+## License
+
 ```
-Output APK: `app/build/outputs/apk/debug/app-debug.apk`
+Copyright 2026 CMF Essential Remapper Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
