@@ -8,6 +8,8 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Parcel
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.content.ContextCompat
 import com.monmoy.cmfessentialremapper.data.preferences.DataStoreManager
 import com.monmoy.cmfessentialremapper.domain.model.EssentialKeyStatus
@@ -106,16 +108,40 @@ class RingerModeRepositoryImpl(
                         savedRingVolume = currentVol
                     }
 
-                    // Directly mute ring stream with FLAG_ALLOW_RINGER_MODES so transition to silent is accepted
-                    try {
-                        am.adjustStreamVolume(
-                            AudioManager.STREAM_RING,
-                            AudioManager.ADJUST_MUTE,
-                            AudioManager.FLAG_ALLOW_RINGER_MODES
-                        )
-                    } catch (_: Throwable) {}
+                    val currentSystemMode = am.ringerMode
+                    if (currentSystemMode == AudioManager.RINGER_MODE_VIBRATE) {
+                        // 1. Cancel active vibrator to prevent hardware vibration from locking audio policy
+                        cancelVibrations()
+
+                        // 2. Mute streams using FLAG_ALLOW_RINGER_MODES so transition is inaudible
+                        try {
+                            am.adjustStreamVolume(
+                                AudioManager.STREAM_RING,
+                                AudioManager.ADJUST_MUTE,
+                                AudioManager.FLAG_ALLOW_RINGER_MODES
+                            )
+                            am.adjustStreamVolume(
+                                AudioManager.STREAM_NOTIFICATION,
+                                AudioManager.ADJUST_MUTE,
+                                AudioManager.FLAG_ALLOW_RINGER_MODES
+                            )
+                        } catch (_: Throwable) {}
+
+                        // 3. In AOSP ZenModeHelper, transition from VIBRATE directly to SILENT is rejected
+                        // while isVibrate is true. Transition briefly through NORMAL to reset the vibration state.
+                        am.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                        delay(60)
+                    }
 
                     am.ringerMode = AudioManager.RINGER_MODE_SILENT
+
+                    // Verify and retry if AudioService requires settling time
+                    var attempts = 0
+                    while (am.ringerMode != AudioManager.RINGER_MODE_SILENT && attempts < 4) {
+                        delay(40)
+                        am.ringerMode = AudioManager.RINGER_MODE_SILENT
+                        attempts++
+                    }
                 }
 
                 RingerMode.VIBRATE -> {
@@ -130,7 +156,7 @@ class RingerModeRepositoryImpl(
                 RingerMode.RING -> {
                     am.ringerMode = AudioManager.RINGER_MODE_NORMAL
 
-                    // Unmute streams and restore ring volume
+                    // Unmute streams and restore ring volume cleanly
                     try {
                         am.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
                         am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
@@ -146,21 +172,65 @@ class RingerModeRepositoryImpl(
         }
     }
 
+    private fun cancelVibrations() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                vm?.defaultVibrator?.cancel()
+            } else {
+                @Suppress("DEPRECATION")
+                val vib = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                vib?.cancel()
+            }
+        } catch (_: Throwable) {}
+    }
+
     /**
      * Invokes internal system AudioService.setRingerModeInternal via Shizuku.
      * Uses caller "com.android.shell" since Shizuku runs with Shell UID 2000.
      */
-    private fun setRingerModeViaShizuku(targetMode: Int): Boolean {
+    private suspend fun setRingerModeViaShizuku(targetMode: Int): Boolean {
         return try {
             if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
                 return false
             }
 
+            // Method 1: Privileged shell command execution via Shizuku
+            try {
+                val modeStr = when (targetMode) {
+                    AudioManager.RINGER_MODE_SILENT -> "silent"
+                    AudioManager.RINGER_MODE_VIBRATE -> "vibrate"
+                    else -> "normal"
+                }
+                val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                    "newProcess",
+                    Array<String>::class.java,
+                    Array<String>::class.java,
+                    String::class.java
+                ).apply { isAccessible = true }
+                val process = newProcessMethod.invoke(
+                    null,
+                    arrayOf("cmd", "audio", "set-ringer-mode", modeStr),
+                    null,
+                    null
+                ) as Process
+                val exitCode = process.waitFor()
+                if (exitCode == 0 && audioManager?.ringerMode == targetMode) {
+                    if (targetMode == AudioManager.RINGER_MODE_NORMAL) {
+                        try {
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
+                        } catch (_: Throwable) {}
+                    }
+                    return true
+                }
+            } catch (_: Throwable) {}
+
+            // Method 2: Reflection via IAudioService$Stub
             val audioBinder = SystemServiceHelper.getSystemService("audio") ?: return false
             val shizukuBinder = ShizukuBinderWrapper(audioBinder)
 
             var invoked = false
-            // Method 1: Reflection via IAudioService$Stub
             try {
                 val stubClass = Class.forName("android.media.IAudioService\$Stub")
                 val asInterfaceMethod = stubClass.getMethod("asInterface", IBinder::class.java)
@@ -173,7 +243,7 @@ class RingerModeRepositoryImpl(
                 setRingerModeInternal.invoke(audioService, targetMode, "com.android.shell")
                 invoked = true
             } catch (_: Throwable) {
-                // Method 2: Direct binder transaction using transaction code
+                // Method 3: Direct binder transaction using transaction code
                 @Suppress("DEPRECATION")
                 val code = SystemServiceHelper.getTransactionCode("android.media.IAudioService", "setRingerModeInternal")
                 if (code != null) {
@@ -193,13 +263,19 @@ class RingerModeRepositoryImpl(
                 }
             }
 
-            if (invoked && targetMode == AudioManager.RINGER_MODE_NORMAL) {
-                try {
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
-                } catch (_: Throwable) {}
+            if (invoked) {
+                delay(40)
+                if (audioManager?.ringerMode == targetMode) {
+                    if (targetMode == AudioManager.RINGER_MODE_NORMAL) {
+                        try {
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_UNMUTE, 0)
+                            audioManager?.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
+                        } catch (_: Throwable) {}
+                    }
+                    return true
+                }
             }
-            invoked
+            false
         } catch (_: Throwable) {
             false
         }

@@ -14,8 +14,13 @@ class RingerModeReceiver(
 ) : BroadcastReceiver() {
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == AudioManager.RINGER_MODE_CHANGED_ACTION) {
-            onStateChanged()
+        when (intent?.action) {
+            AudioManager.RINGER_MODE_CHANGED_ACTION,
+            NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED,
+            "android.media.VOLUME_CHANGED_ACTION",
+            "android.media.STREAM_MUTE_CHANGED_ACTION" -> {
+                onStateChanged()
+            }
         }
     }
 }

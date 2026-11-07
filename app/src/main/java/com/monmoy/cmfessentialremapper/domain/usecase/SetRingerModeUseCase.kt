@@ -3,28 +3,23 @@ package com.monmoy.cmfessentialremapper.domain.usecase
 import com.monmoy.cmfessentialremapper.data.repository.RingerModeRepository
 import com.monmoy.cmfessentialremapper.domain.model.RingerMode
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
- * Use case to change the device ringer mode directly.
- * Thread-safe via Mutex to prevent concurrent mode change conflicts.
+ * Use case to change the device ringer mode directly without DND restrictions.
  */
 class SetRingerModeUseCase(
     private val repository: RingerModeRepository
 ) {
-    private val mutex = Mutex()
-
-    suspend operator fun invoke(targetMode: RingerMode): Result<RingerMode> = mutex.withLock {
+    suspend operator fun invoke(targetMode: RingerMode): Result<RingerMode> {
         val current = repository.getCurrentRingerMode()
         if (current == targetMode) {
-            return@withLock Result.success(current)
+            return Result.success(current)
         }
 
-        try {
+        return try {
             repository.setRingerMode(targetMode)
             var updated = repository.getCurrentRingerMode()
-            var retries = 6
+            var retries = 8
             while (updated != targetMode && retries > 0) {
                 delay(40)
                 updated = repository.getCurrentRingerMode()
