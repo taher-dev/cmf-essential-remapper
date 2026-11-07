@@ -653,6 +653,98 @@
         .preview-btn.primary:hover {
             background: #331518;
         }
+
+        /* Interactive Notification Shade / Quick Settings Mockup */
+        .shade-mockup {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 68%;
+            background: rgba(16, 16, 16, 0.96);
+            border-bottom: 2px solid #333;
+            border-radius: 0 0 32px 32px;
+            backdrop-filter: blur(20px);
+            z-index: 85;
+            transform: translateY(-100%);
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 48px 20px 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            cursor: pointer;
+        }
+
+        .shade-mockup.open {
+            transform: translateY(0);
+        }
+
+        .shade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shade-clock {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #FFF;
+        }
+
+        .shade-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #888;
+            letter-spacing: 0.5px;
+        }
+
+        .shade-tiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .shade-tile {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 14px;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #AAA;
+        }
+
+        .shade-tile.active {
+            background: #FFF;
+            color: #000;
+            border-color: #FFF;
+        }
+
+        .shade-notif-card {
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 14px;
+            padding: 12px;
+            margin-top: 4px;
+        }
+
+        .shade-notif-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .shade-handle {
+            width: 36px;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            align-self: center;
+            margin-top: auto;
+        }
     </style>
 </head>
 <body>
@@ -694,6 +786,29 @@
                     </div>
                 </div>
                 <span class="hud-dot" id="hudDot"></span>
+            </div>
+
+            <!-- Interactive Notification Shade / Quick Settings Mockup -->
+            <div id="shadeMockup" class="shade-mockup" onclick="closeShade()">
+                <div class="shade-header">
+                    <span class="shade-clock">9:41</span>
+                    <span class="nothing-dot"></span>
+                </div>
+                <div class="shade-title" id="shadeTitle">NOTIFICATIONS</div>
+                <div class="shade-tiles">
+                    <div class="shade-tile active"><span>Wi-Fi</span></div>
+                    <div class="shade-tile active"><span>Bluetooth</span></div>
+                    <div class="shade-tile"><span>Airplane</span></div>
+                    <div class="shade-tile"><span>Torch</span></div>
+                </div>
+                <div class="shade-notif-card" id="shadeCard">
+                    <div class="shade-notif-header">
+                        <span style="font-weight: 600; color: #FFF;">CMF System</span>
+                        <span style="font-size: 10px; color: #888;">Just now</span>
+                    </div>
+                    <div style="font-size: 12px; color: #AAA; margin-top: 4px;">Essential Key remapped successfully</div>
+                </div>
+                <div class="shade-handle"></div>
             </div>
 
             <!-- Main Screen Container -->
@@ -840,21 +955,21 @@
                             </div>
                         </div>
 
-                        <!-- Option 5: Open Notifications -->
-                        <div class="option-item" onclick="selectAction('notifications', 'Open Notifications', 'Pull down notification drawer')">
+                        <!-- Option 5: Toggle Notifications -->
+                        <div class="option-item" onclick="selectAction('notifications', 'Toggle Notifications', 'Open or close notification drawer')">
                             <div class="radio-circle"><span class="radio-dot"></span></div>
                             <div class="option-text-col">
-                                <span class="option-title">Open Notifications</span>
-                                <span class="option-desc">Pull down notification drawer</span>
+                                <span class="option-title">Toggle Notifications</span>
+                                <span class="option-desc">Open or close notification drawer</span>
                             </div>
                         </div>
 
-                        <!-- Option 6: Quick Settings -->
-                        <div class="option-item" onclick="selectAction('quick_settings', 'Quick Settings', 'Open quick settings panel')">
+                        <!-- Option 6: Toggle Quick Settings -->
+                        <div class="option-item" onclick="selectAction('quick_settings', 'Toggle Quick Settings', 'Open or close quick settings panel')">
                             <div class="radio-circle"><span class="radio-dot"></span></div>
                             <div class="option-text-col">
-                                <span class="option-title">Quick Settings</span>
-                                <span class="option-desc">Open quick settings panel</span>
+                                <span class="option-title">Toggle Quick Settings</span>
+                                <span class="option-desc">Open or close quick settings panel</span>
                             </div>
                         </div>
 
@@ -955,6 +1070,48 @@
             }, 1800);
         }
 
+        let isNotificationOpen = false;
+        let isQuickSettingsOpen = false;
+
+        function closeShade() {
+            isNotificationOpen = false;
+            isQuickSettingsOpen = false;
+            document.getElementById('shadeMockup').classList.remove('open');
+        }
+
+        function toggleShadeUI(mode) {
+            const shade = document.getElementById('shadeMockup');
+            const titleEl = document.getElementById('shadeTitle');
+            const cardEl = document.getElementById('shadeCard');
+
+            titleEl.textContent = mode;
+            if (mode === 'QUICK SETTINGS') {
+                cardEl.style.display = 'none';
+                shade.style.height = '60%';
+            } else {
+                cardEl.style.display = 'block';
+                shade.style.height = '68%';
+            }
+
+            if (mode === 'NOTIFICATIONS') {
+                isNotificationOpen = !isNotificationOpen;
+                isQuickSettingsOpen = false;
+                if (isNotificationOpen) {
+                    shade.classList.add('open');
+                } else {
+                    shade.classList.remove('open');
+                }
+            } else if (mode === 'QUICK SETTINGS') {
+                isQuickSettingsOpen = !isQuickSettingsOpen;
+                isNotificationOpen = false;
+                if (isQuickSettingsOpen) {
+                    shade.classList.add('open');
+                } else {
+                    shade.classList.remove('open');
+                }
+            }
+        }
+
         function pressEssentialKey(gesture) {
             const action = mappings[gesture].id;
 
@@ -983,9 +1140,16 @@
                     );
                     break;
 
+                case 'notifications':
+                    toggleShadeUI('NOTIFICATIONS');
+                    break;
+
+                case 'quick_settings':
+                    toggleShadeUI('QUICK SETTINGS');
+                    break;
+
                 default:
-                    // Native system actions (screenshot, notifications, quick settings, lock)
-                    // have immediate native system UI feedback and do not trigger HUD
+                    // Screenshot, lock, none
                     break;
             }
         }
